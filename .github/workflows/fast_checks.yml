@@ -4,6 +4,9 @@ name: Fast checks
 # run JVM unit tests of the shared and provider modules. The full assemble + lint
 # runs on pushes to dev (Build PR workflow) instead of on every pull request.
 on:
+  # branch pushes run it in a contributor's fork
+  push:
+    branches: ['feat/**']
   pull_request:
     branches: [dev]
   workflow_dispatch:

@@ -4,6 +4,8 @@ name: iOS compile
 # Linux skips iOS targets, so this is the only signal for iosMain.
 on:
   workflow_dispatch:
+  push:
+    branches: ['feat/**']
   pull_request:
     branches: [dev]
 
