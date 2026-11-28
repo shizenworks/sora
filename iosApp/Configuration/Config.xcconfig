@@ -1,0 +1,17 @@
+//
+// Config.xcconfig
+// Mochy for iOS. The Xcode project is adapted from Metrolist's (github.com/MetrolistGroup/Metrolist,
+// GPL-3.0); Mochy itself is a fork of Mochy Music by realidkroo (github.com/realidkroo/mochy-music).
+//
+
+PRODUCT_NAME = Mochy
+PRODUCT_BUNDLE_IDENTIFIER = com.mochyy.mochymusic.ios
+SWIFT_VERSION = 5.9
+IPHONEOS_DEPLOYMENT_TARGET = 17.0
+SDKROOT = iphoneos
+// The KMP framework is built for arm64 simulators only.
+EXCLUDED_ARCHS[sdk=iphonesimulator*] = x86_64
+TARGETED_DEVICE_FAMILY = 1,2
+ENABLE_USER_SCRIPT_SANDBOXING = NO
+MARKETING_VERSION = 1.0.0
+CURRENT_PROJECT_VERSION = 1

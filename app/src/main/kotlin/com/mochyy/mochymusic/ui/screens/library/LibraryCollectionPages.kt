@@ -12,7 +12,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import org.koin.compose.viewmodel.koinViewModel
 import androidx.navigation.NavController
 import com.mochyy.mochymusic.LocalDatabase
 import com.mochyy.mochymusic.LocalPlayerConnection
@@ -46,7 +46,7 @@ private fun CoroutineScope.playGathered(player: PlayerConnection?, title: String
 
 @Composable
 internal fun LibraryAlbumsPage(navController: NavController) {
-    val viewModel: LibraryHomeViewModel = hiltViewModel()
+    val viewModel: LibraryHomeViewModel = koinViewModel()
     val albums by viewModel.albums.collectAsState()
     val songs by viewModel.songs.collectAsState()
     val database = LocalDatabase.current
@@ -88,7 +88,7 @@ internal fun LibraryAlbumsPage(navController: NavController) {
 
 @Composable
 internal fun LibraryArtistsPage(navController: NavController) {
-    val viewModel: LibraryHomeViewModel = hiltViewModel()
+    val viewModel: LibraryHomeViewModel = koinViewModel()
     val artists by viewModel.artists.collectAsState()
     val songs by viewModel.songs.collectAsState()
     val resources = LocalContext.current.resources
@@ -130,7 +130,7 @@ internal fun LibraryArtistsPage(navController: NavController) {
 
 @Composable
 internal fun LibraryPlaylistsPage(navController: NavController) {
-    val viewModel: LibraryHomeViewModel = hiltViewModel()
+    val viewModel: LibraryHomeViewModel = koinViewModel()
     val playlists by viewModel.playlists.collectAsState()
     val resources = LocalContext.current.resources
     val database = LocalDatabase.current

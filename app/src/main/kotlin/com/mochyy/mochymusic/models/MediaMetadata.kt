@@ -10,6 +10,7 @@ import com.mochyy.mochymusic.db.entities.SongEntity
 import com.mochyy.mochymusic.ui.utils.resize
 import java.io.Serializable
 import java.time.LocalDateTime
+import kotlinx.datetime.toKotlinLocalDateTime
 
 @Immutable
 data class MediaMetadata(
@@ -55,8 +56,8 @@ data class MediaMetadata(
             albumName = album?.title,
             explicit = explicit,
             liked = liked,
-            likedDate = likedDate,
-            inLibrary = inLibrary,
+            likedDate = likedDate?.toKotlinLocalDateTime(),
+            inLibrary = inLibrary?.toKotlinLocalDateTime(),
             libraryAddToken = libraryAddToken,
             libraryRemoveToken = libraryRemoveToken,
             isVideo = isVideoSong,

@@ -1,5 +1,5 @@
 // Neiro's font choice (data/settings AppFont + ui/theme/CustomFontLoader), on sora's DataStore: the picked
-// font is read at launch and whenever it changes, and handed to UserFont, which the app's typography reads.
+// font is read at launch and whenever it changes, and handed to the shared font state, which the app's typography reads.
 
 package com.mochyy.mochymusic.ui.theme
 
@@ -102,7 +102,7 @@ object AppFontLoader {
     }
 }
 
-/** called once from MainActivity: keeps UserFont on the choice saved in settings */
+/** called once from MainActivity: keeps the shared font on the choice saved in settings */
 @Composable
 fun ApplyAppFont() {
     val context = LocalContext.current.applicationContext
@@ -111,7 +111,7 @@ fun ApplyAppFont() {
             .map { (it[AppFontKey] ?: AppFont.DEFAULT.name) to it[CustomFontPathKey] }
             .distinctUntilChanged()
             .collect { (choice, path) ->
-                UserFont.family = when (runCatching { AppFont.valueOf(choice) }.getOrDefault(AppFont.DEFAULT)) {
+                com.mochyy.mochymusic.ui.theme.AppFont.custom = when (runCatching { AppFont.valueOf(choice) }.getOrDefault(AppFont.DEFAULT)) {
                     AppFont.DEFAULT -> null
                     AppFont.SF_PRO -> SfProFamily
                     AppFont.SYSTEM -> FontFamily.Default

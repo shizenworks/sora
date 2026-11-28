@@ -35,7 +35,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastForEachReversed
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import org.koin.compose.viewmodel.koinViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.mochyy.mochymusic.LocalPlayerAwareWindowInsets
 import com.mochyy.mochymusic.LocalPlayerConnection
@@ -68,14 +69,13 @@ import com.mochyy.mochymusic.utils.makeTimeString
 import com.mochyy.mochymusic.utils.rememberEnumPreference
 import com.mochyy.mochymusic.utils.rememberPreference
 import com.mochyy.mochymusic.viewmodels.CachePlaylistViewModel
-import java.time.LocalDateTime
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CachePlaylistScreen(
     navController: NavController,
     @Suppress("UNUSED_PARAMETER") scrollBehavior: TopAppBarScrollBehavior,
-    viewModel: CachePlaylistViewModel = hiltViewModel(),
+    viewModel: CachePlaylistViewModel = koinViewModel(),
 ) {
     val context = LocalContext.current
     val menuState = LocalMenuState.current
@@ -85,7 +85,7 @@ fun CachePlaylistScreen(
     val isPlaying by playerConnection.isEffectivelyPlaying.collectAsState()
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
     val queueTitle by playerConnection.queueTitle.collectAsState()
-    val cachedSongs by viewModel.cachedSongs.collectAsState()
+    val cachedSongs by viewModel.cachedSongs.collectAsStateWithLifecycle()
 
     val (sortType, onSortTypeChange) = rememberEnumPreference(SongSortTypeKey, SongSortType.CREATE_DATE)
     val (sortDescending, onSortDescendingChange) = rememberPreference(SongSortDescendingKey, true)
@@ -95,7 +95,7 @@ fun CachePlaylistScreen(
     val sortedSongs = remember(cachedSongs, sortType, sortDescending, hideExplicit) {
         val visible = if (hideExplicit) cachedSongs.filter { !it.song.explicit } else cachedSongs
         val sorted = when (sortType) {
-            SongSortType.CREATE_DATE -> visible.sortedBy { it.song.dateDownload ?: LocalDateTime.MIN }
+            SongSortType.CREATE_DATE -> visible.sortedWith(compareBy(nullsFirst(naturalOrder<kotlinx.datetime.LocalDateTime>())) { it.song.dateDownload })
             SongSortType.NAME -> visible.sortedBy { it.song.title }
             SongSortType.ARTIST -> visible.sortedBy { song -> song.artists.joinToString(separator = "") { it.name } }
             SongSortType.PLAY_TIME -> visible.sortedBy { it.song.totalPlayTime }

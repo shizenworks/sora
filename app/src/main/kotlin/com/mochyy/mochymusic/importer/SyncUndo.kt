@@ -9,6 +9,7 @@ import com.mochyy.mochymusic.constants.YtSyncHoldKey
 import com.mochyy.mochymusic.db.MusicDatabase
 import com.mochyy.mochymusic.db.entities.PlaylistSongMap
 import com.mochyy.mochymusic.db.entities.SongEntity
+import com.mochyy.mochymusic.db.nowLocal
 import com.mochyy.mochymusic.utils.dataStore
 import com.music.innertube.YouTube
 import kotlinx.coroutines.delay
@@ -16,7 +17,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.io.File
-import java.time.LocalDateTime
+import kotlinx.datetime.LocalDateTime
 
 /** saves what the last full sync is about to change, so an undo can put it back */
 object SyncUndo {
@@ -91,7 +92,7 @@ object SyncUndo {
             .forEach { likeWrites += it.copy(liked = false, likedDate = null) }
         for ((id, date) in journal.likedSongs) {
             val song = database.getSongById(id)?.song ?: continue
-            val wanted = date?.let(LocalDateTime::parse)
+            val wanted = date?.let { LocalDateTime.parse(it) }
             if (!song.liked || song.likedDate != wanted) likeWrites += song.copy(liked = true, likedDate = wanted)
         }
 

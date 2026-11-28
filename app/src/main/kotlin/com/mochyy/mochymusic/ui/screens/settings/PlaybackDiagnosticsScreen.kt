@@ -26,6 +26,20 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import com.mochyy.mochymusic.ui.component.DefaultDialog
+import com.mochyy.mochymusic.utils.CrashHandler
+import kotlinx.coroutines.Dispatchers
+import java.io.File
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import com.mochyy.mochymusic.R
 import com.mochyy.mochymusic.ui.component.SettingsGroup
 import com.mochyy.mochymusic.ui.component.SettingsGroupStyle
@@ -48,6 +62,41 @@ fun PlaybackDiagnosticsScreen(navController: NavController) {
 
     val lastValidated = remember(logs) { logs.lastOrNull { it.message == "Stream validated" } }
     val hasPoToken = YTPlayerUtils.hasPoToken
+
+    // the redacted copy waiting for the user's go-ahead, and its lines for the preview
+    val scope = rememberCoroutineScope()
+    var crashCopy by remember { mutableStateOf<File?>(null) }
+    var crashLines by remember { mutableStateOf<List<String>>(emptyList()) }
+
+    crashCopy?.let { copy ->
+        // what the share sheet will get, line for line, before it gets it
+        DefaultDialog(
+            onDismiss = { crashCopy = null },
+            horizontalAlignment = Alignment.Start,
+            title = { Text(stringResource(R.string.crash_preview_title)) },
+            buttons = {
+                TextButton(onClick = { crashCopy = null }) { Text(stringResource(android.R.string.cancel)) }
+                TextButton(
+                    onClick = {
+                        crashCopy = null
+                        CrashHandler.shareCrashCopy(context, copy)
+                    },
+                ) { Text(stringResource(R.string.share)) }
+            },
+        ) {
+            Text(
+                text = stringResource(R.string.crash_preview_desc),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(12.dp))
+            LazyColumn(Modifier.fillMaxWidth().heightIn(max = 420.dp)) {
+                items(crashLines) { line ->
+                    Text(text = line, style = MaterialTheme.typography.labelSmall, fontFamily = FontFamily.Monospace)
+                }
+            }
+        }
+    }
 
     SubSettingsScaffold(
         title = stringResource(R.string.playback_diagnostics_title),
@@ -108,6 +157,26 @@ fun PlaybackDiagnosticsScreen(navController: NavController) {
                         icon = painterResource(R.drawable.delete),
                         iconShape = CircleShape,
                         onClick = { PlaybackLogManager.clearLogs() },
+                    ),
+                    // here rather than in Experimental: this page stays Android-only while the
+                    // Experimental page moves to shared code, and the share sheet is an Android intent
+                    SettingsItem(
+                        title = { Text(stringResource(R.string.crash_share_title)) },
+                        descriptionText = stringResource(R.string.crash_share_row_desc),
+                        icon = painterResource(R.drawable.bug_report),
+                        iconShape = CircleShape,
+                        onClick = {
+                            scope.launch {
+                                val copy = withContext(Dispatchers.IO) {
+                                    CrashHandler.exportLatestCrash(context)?.also { crashLines = it.readLines() }
+                                }
+                                if (copy == null) {
+                                    Toast.makeText(context, R.string.crash_no_log, Toast.LENGTH_SHORT).show()
+                                } else {
+                                    crashCopy = copy
+                                }
+                            }
+                        },
                     ),
                 ),
         )

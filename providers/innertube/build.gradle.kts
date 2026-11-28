@@ -1,36 +1,54 @@
+// YouTube Music client (models, page parsers and the InnerTube/YouTube facade). Not Mochy's own work:
+// it comes from the projects credited in the README (Metrolist and those before it).
+//
+// Multiplatform so the desktop and iOS apps can browse and search with the code Android uses:
+// - commonMain: the response models and page parsers, pure Kotlin
+// - jvmSharedMain: the HTTP client, the YouTube facade and the NewPipe fallback, shared by the
+//   Android and desktop targets because both run on a JVM
+import com.android.build.api.dsl.KotlinMultiplatformAndroidLibraryExtension
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
-    id("com.android.library")
+    kotlin("multiplatform")
+    id("com.android.kotlin.multiplatform.library")
     alias(libs.plugins.kotlin.serialization)
-}
-
-android {
-    namespace = "com.music.innertube"
-    compileSdk = 37
-
-    defaultConfig {
-        minSdk = 24
-    }
-
-    compileOptions {
-        isCoreLibraryDesugaringEnabled = true
-        sourceCompatibility = JavaVersion.VERSION_21
-        targetCompatibility = JavaVersion.VERSION_21
-    }
 }
 
 kotlin {
     jvmToolchain(21)
-}
 
-dependencies {
-    implementation(libs.ktor.client.core)
-    implementation(libs.ktor.client.okhttp)
-    implementation(libs.ktor.client.content.negotiation)
-    implementation(libs.ktor.serialization.json)
-    implementation(libs.ktor.client.encoding)
-    implementation(libs.brotli)
-    implementation(libs.newpipeextractor)
-    testImplementation(libs.junit)
+    extensions.configure<KotlinMultiplatformAndroidLibraryExtension>("androidLibrary") {
+        namespace = "com.music.innertube"
+        compileSdk = 37
+        minSdk = 24
+    }
 
-    coreLibraryDesugaring(libs.desugaring)
+    jvm("desktop") {
+        compilerOptions.jvmTarget.set(JvmTarget.JVM_21)
+    }
+
+    // models and parsers compile for iOS; the facade gets an iOS client when the iOS app needs it
+    iosArm64()
+    iosSimulatorArm64()
+
+    applyDefaultHierarchyTemplate()
+
+    sourceSets {
+        commonMain.dependencies {
+            implementation(libs.ktor.client.core)
+            implementation(libs.ktor.client.content.negotiation)
+            implementation(libs.ktor.serialization.json)
+            implementation(libs.ktor.client.encoding)
+        }
+        val jvmSharedMain = create("jvmSharedMain") {
+            dependsOn(getByName("commonMain"))
+            dependencies {
+                implementation(libs.ktor.client.okhttp)
+                implementation(libs.brotli)
+                implementation(libs.newpipeextractor)
+            }
+        }
+        getByName("androidMain").dependsOn(jvmSharedMain)
+        getByName("desktopMain").dependsOn(jvmSharedMain)
+    }
 }

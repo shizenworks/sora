@@ -24,8 +24,6 @@ import com.mochyy.mochymusic.importer.ImportSource
 import com.mochyy.mochymusic.playback.CachedSongs
 import com.mochyy.mochymusic.utils.SyncUtils
 import com.mochyy.mochymusic.utils.dataStore
-import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -40,7 +38,6 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 /** Liked songs that came from one place; [source] null is the ones liked here in Mochy. */
 data class LikedSourceSection(val source: ImportSource?, val songs: List<Song>)
@@ -52,11 +49,9 @@ data class AutoPlaylistSongs(
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
-@HiltViewModel
 class AutoPlaylistViewModel
-@Inject
 constructor(
-    @ApplicationContext context: Context,
+    context: Context,
     private val database: MusicDatabase,
     savedStateHandle: SavedStateHandle,
     private val syncUtils: SyncUtils,

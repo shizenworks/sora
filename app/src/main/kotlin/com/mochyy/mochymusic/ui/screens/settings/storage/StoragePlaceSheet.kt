@@ -50,8 +50,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.mochyy.mochymusic.R
-import com.mochyy.mochymusic.playback.MoveStep
-import com.mochyy.mochymusic.playback.StoragePlace
 import com.mochyy.mochymusic.playback.StoredKind
 import com.mochyy.mochymusic.ui.component.PopupSheetState
 import com.mochyy.mochymusic.ui.component.RemoteFocus
@@ -60,7 +58,10 @@ import com.mochyy.mochymusic.ui.component.SheetPillButton
 import com.mochyy.mochymusic.ui.component.detail.PlaylistSelectTick
 import com.mochyy.mochymusic.ui.player.menu.MenuRowSurface
 import com.mochyy.mochymusic.ui.screens.library.showConfirm
+import com.mochyy.mochymusic.viewmodels.MoveStep
 import com.mochyy.mochymusic.viewmodels.PlaceChoice
+import com.mochyy.mochymusic.viewmodels.StorageKind
+import com.mochyy.mochymusic.viewmodels.StoragePlaceInfo
 import com.mochyy.mochymusic.viewmodels.StorageViewModel
 import kotlinx.coroutines.launch
 
@@ -68,10 +69,10 @@ import kotlinx.coroutines.launch
 @Stable
 private class PlacePick {
     var choice by mutableStateOf<PlaceChoice?>(null)
-    var picked by mutableStateOf<StoragePlace?>(null)
+    var picked by mutableStateOf<StoragePlaceInfo?>(null)
 
     // a drive that fits what's moving, with a little room to spare
-    fun fits(place: StoragePlace): Boolean = place.free > (choice?.bytesToMove ?: 0L) + 50_000_000L
+    fun fits(place: StoragePlaceInfo): Boolean = place.free > (choice?.bytesToMove ?: 0L) + 50_000_000L
 }
 
 fun PopupSheetState.showStoragePlaceSheet(viewModel: StorageViewModel, kind: StoredKind) {
@@ -103,7 +104,7 @@ fun PopupSheetState.showStoragePlaceSheet(viewModel: StorageViewModel, kind: Sto
                 enabled = canMove,
                 onClick = {
                     val place = target ?: return@SheetPillButton
-                    popup.showConfirm(title = title, message = message, action = action) { viewModel.move(kind, place) }
+                    popup.showConfirm(title = title, message = message, action = action) { viewModel.move(kind.toStorageKind(), place) }
                 },
             )
         },
@@ -114,13 +115,13 @@ fun PopupSheetState.showStoragePlaceSheet(viewModel: StorageViewModel, kind: Sto
 
 @Composable
 private fun PlaceSheetContent(viewModel: StorageViewModel, kind: StoredKind, pick: PlacePick) {
-    LaunchedEffect(kind) { if (pick.choice == null) pick.choice = viewModel.placeChoice(kind) }
+    LaunchedEffect(kind) { if (pick.choice == null) pick.choice = viewModel.placeChoice(kind.toStorageKind()) }
     val step by viewModel.moveStep.collectAsState()
     val choice = pick.choice
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     // a picked folder waiting on all files access before it can be moved to
-    var waiting by remember { mutableStateOf<StoragePlace?>(null) }
+    var waiting by remember { mutableStateOf<StoragePlaceInfo?>(null) }
     var problem by remember { mutableStateOf<Int?>(null) }
 
     fun accessAnswered() {
@@ -138,7 +139,7 @@ private fun PlaceSheetContent(viewModel: StorageViewModel, kind: StoredKind, pic
     val folderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { tree ->
         if (tree == null) return@rememberLauncherForActivityResult
         scope.launch {
-            val place = viewModel.pickedFolder(tree)
+            val place = viewModel.pickedFolder(tree.toString())
             problem = null
             when {
                 place == null -> problem = R.string.storage_place_folder_unsupported
@@ -278,7 +279,7 @@ private fun PlaceIcon(painter: Painter) {
 }
 
 @Composable
-private fun PlaceRow(place: StoragePlace, selected: Boolean, isCurrent: Boolean, fits: Boolean, onClick: () -> Unit) {
+private fun PlaceRow(place: StoragePlaceInfo, selected: Boolean, isCurrent: Boolean, fits: Boolean, onClick: () -> Unit) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
@@ -313,4 +314,10 @@ private fun PlaceRow(place: StoragePlace, selected: Boolean, isCurrent: Boolean,
         }
         PlaylistSelectTick(checked = selected)
     }
+}
+
+// the sheets still name the app's two folder kinds; the shared view model names them its own way
+private fun StoredKind.toStorageKind(): StorageKind = when (this) {
+    StoredKind.Downloads -> StorageKind.Downloads
+    StoredKind.SongCache -> StorageKind.SongCache
 }

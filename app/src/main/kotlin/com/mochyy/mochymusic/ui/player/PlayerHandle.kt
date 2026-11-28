@@ -155,6 +155,8 @@ fun PlayerHandle(
     /** False while something else owns the top of the player (the studio). */
     enabled: () -> Boolean,
     modifier: Modifier = Modifier,
+    /** False while paused: the colour behind the bar is looked at once, not every few seconds. */
+    playing: Boolean = true,
 ) {
     val currentEnabled by rememberUpdatedState(enabled)
     val bend = remember { Animatable(0f) }
@@ -172,7 +174,7 @@ fun PlayerHandle(
 
     // Window bounds of the tap target, for the colour sampling. Not state: only read when sampling.
     val targetBounds = remember { FloatArray(4) }
-    val onLight by rememberOnLightBehind(sheet, targetBounds)
+    val onLight by rememberOnLightBehind(sheet, targetBounds, playing)
     val color by animateColorAsState(
         targetValue = if (onLight) Color.Black else Color.White,
         animationSpec = tween(durationMillis = 300),
@@ -240,12 +242,12 @@ fun PlayerHandle(
  * pixels, made on the render thread.
  */
 @Composable
-private fun rememberOnLightBehind(sheet: BottomSheetState, targetBounds: FloatArray): State<Boolean> {
+private fun rememberOnLightBehind(sheet: BottomSheetState, targetBounds: FloatArray, playing: Boolean): State<Boolean> {
     val onLight = remember { mutableStateOf(false) }
     val view = LocalView.current
     val density = LocalDensity.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
-    LaunchedEffect(view, sheet, density) {
+    LaunchedEffect(view, sheet, density, playing) {
         val window = view.context.findActivity()?.window ?: return@LaunchedEffect
         val bitmap = Bitmap.createBitmap(SampleBitmapWidth, SampleBitmapHeight, Bitmap.Config.ARGB_8888)
         val pixels = IntArray(SampleBitmapWidth * SampleBitmapHeight)
@@ -275,6 +277,8 @@ private fun rememberOnLightBehind(sheet: BottomSheetState, targetBounds: FloatAr
                         // Apart, so a backdrop sitting near the line doesn't flip it back and forth.
                         onLight.value = if (onLight.value) luminance > 0.52f else luminance > 0.66f
                     }
+                    // paused: nothing behind the bar moves, so one look is enough (playing again restarts this)
+                    if (!playing) break
                     delay(HandleSampleIntervalMs)
                 }
             }

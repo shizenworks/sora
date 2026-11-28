@@ -8,7 +8,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.io.File
-import java.time.LocalDateTime
+import kotlinx.datetime.LocalDateTime
 
 /** what the liked songs sync keeps between runs: the likes youtube listed last time, and every like the sync took off */
 object YouTubeLikesMemory {

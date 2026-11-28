@@ -47,8 +47,10 @@ import androidx.media3.common.Player
 import com.mochyy.mochymusic.LocalPlayerConnection
 import com.mochyy.mochymusic.R
 import com.mochyy.mochymusic.constants.ShowFormatBadgeKey
+import com.mochyy.mochymusic.constants.ShowFormatBitDepthKey
 import com.mochyy.mochymusic.constants.ShowFormatSampleRateKey
 import com.mochyy.mochymusic.extensions.togglePlayPause
+import com.mochyy.mochymusic.shared.ui.player.StreamFormatBadge
 import com.mochyy.mochymusic.ui.theme.InterFontFamily
 import com.mochyy.mochymusic.utils.rememberPreference
 import com.mochyy.mochymusic.ui.component.RemoteFocus
@@ -338,12 +340,13 @@ private fun TitleLines(mediaId: String, title: String, artist: String, modifier:
     val connection = LocalPlayerConnection.current ?: return
     val (showBadge) = rememberPreference(ShowFormatBadgeKey, defaultValue = true)
     val (showSampleRate) = rememberPreference(ShowFormatSampleRateKey, defaultValue = false)
+    val (showBitDepth) = rememberPreference(ShowFormatBitDepthKey, defaultValue = false)
     Column(modifier = modifier) {
         val facts by remember(mediaId) { connection.streamFacts(mediaId) }.collectAsState(initial = null)
         val larp = rememberLarpMode()
         val badge = when {
             larp != null -> larpBadgeText(larp)
-            showBadge -> streamBadgeText(facts, showSampleRate)
+            showBadge -> streamBadgeText(facts, showSampleRate, showBitDepth)
             else -> null
         }
         Row(verticalAlignment = Alignment.CenterVertically) {

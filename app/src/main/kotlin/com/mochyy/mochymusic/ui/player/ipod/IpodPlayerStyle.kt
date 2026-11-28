@@ -42,7 +42,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import org.koin.compose.viewmodel.koinViewModel
 import com.mochyy.mochymusic.LocalPlayerConnection
 import com.mochyy.mochymusic.ui.component.BottomSheetState
 import com.mochyy.mochymusic.ui.component.LocalPlayerBottomSheetState
@@ -109,7 +109,7 @@ private fun IpodFace(geometry: IpodGeometry, preview: Boolean, density: Density)
     val connection = LocalPlayerConnection.current
     val sheet = LocalPlayerBottomSheetState.current
     val look = LocalIpodLook.current
-    val library: IpodLibraryViewModel? = if (preview) null else hiltViewModel()
+    val library: IpodLibraryViewModel? = if (preview) null else koinViewModel()
     val scope = rememberCoroutineScope()
     val nav = remember(scope) { IpodNavigator(scope) }
     val nowPlaying = remember { IpodNowPlayingState() }

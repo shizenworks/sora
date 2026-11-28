@@ -3,10 +3,13 @@
 package com.mochyy.mochymusic.car
 
 import android.content.Context
+import android.net.ConnectivityManager
+import android.net.Uri
 import android.util.LruCache
 import androidx.annotation.DrawableRes
 import androidx.car.app.model.CarIcon
 import androidx.core.graphics.drawable.IconCompat
+import androidx.core.content.getSystemService
 import coil3.imageLoader
 import coil3.request.ImageRequest
 import coil3.request.SuccessResult
@@ -16,7 +19,10 @@ import coil3.size.Size
 import coil3.toBitmap
 import coil3.transform.RoundedCornersTransformation
 import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.constants.CarMeteredArtworkKey
 import com.mochyy.mochymusic.ui.utils.resize
+import com.mochyy.mochymusic.utils.dataStore
+import com.mochyy.mochymusic.utils.get
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -34,6 +40,11 @@ class CarImages(private val context: Context) {
     suspend fun cover(url: String?): CarIcon {
         if (url.isNullOrBlank()) return placeholder
         covers.get(url)?.let { return it }
+        val scheme = Uri.parse(url).scheme
+        if ((scheme.equals("https", ignoreCase = true) || scheme.equals("http", ignoreCase = true)) &&
+            !context.dataStore.get(CarMeteredArtworkKey, true) &&
+            context.getSystemService<ConnectivityManager>()?.isActiveNetworkMetered == true
+        ) return placeholder
         val icon = loads.withPermit { withContext(Dispatchers.IO) { load(url) } } ?: return placeholder
         covers.put(url, icon)
         return icon

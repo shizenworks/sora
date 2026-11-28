@@ -16,6 +16,8 @@ data class StreamFacts(
     val codec: String? = null,
     /** samples per second, as the decoder is given them */
     val sampleRate: Int? = null,
+    /** bits per sample the decoder reads (16, 24...), for lossless streams only; lossy ones have none */
+    val bitDepth: Int? = null,
     /** from a source module, so the song's YouTube format record doesn't describe it */
     val fromModule: Boolean = false,
 ) {

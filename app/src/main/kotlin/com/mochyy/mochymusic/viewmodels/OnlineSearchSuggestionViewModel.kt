@@ -2,7 +2,8 @@
 
 package com.mochyy.mochymusic.viewmodels
 
-import android.content.Context
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.music.innertube.YouTube
@@ -15,10 +16,7 @@ import com.mochyy.mochymusic.constants.HideExplicitKey
 import com.mochyy.mochymusic.constants.HideVideoSongsKey
 import com.mochyy.mochymusic.db.MusicDatabase
 import com.mochyy.mochymusic.db.entities.SearchHistory
-import com.mochyy.mochymusic.utils.dataStore
 import com.mochyy.mochymusic.utils.get
-import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -26,14 +24,11 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
+// Koin builds it (di/koin/OnlineKoin.kt); offline results still use the app's library search
 @OptIn(ExperimentalCoroutinesApi::class)
-@HiltViewModel
-class OnlineSearchSuggestionViewModel
-@Inject
-constructor(
-    @ApplicationContext val context: Context,
+class OnlineSearchSuggestionViewModel(
+    private val preferences: DataStore<Preferences>,
     database: MusicDatabase,
 ) : ViewModel() {
     val query = MutableStateFlow("")
@@ -72,8 +67,8 @@ constructor(
                         val parsedItem = if (parsedUrl != null) fetchParsedUrlItem(parsedUrl) else null
 
                         val result = if (parsedUrl != null) null else YouTube.searchSuggestions(query).getOrNull()
-                        val hideExplicit = context.dataStore.get(HideExplicitKey, false)
-                        val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
+                        val hideExplicit = preferences.get(HideExplicitKey, false)
+                        val hideVideoSongs = preferences.get(HideVideoSongsKey, false)
 
                         database
                             .searchHistory(query)

@@ -77,20 +77,8 @@ fun AlternatePlayerStyle(
     modifier: Modifier = Modifier,
     preview: Boolean = false,
 ) {
-    when (style) {
-        PlayerStyle.POSTER -> PosterPlayerStyle(actions, modifier, preview)
-        PlayerStyle.TIMELINE -> TimelinePlayerStyle(actions, modifier, preview)
-        PlayerStyle.LYRICS -> LyricsPlayerStyle(actions, modifier, preview)
-        PlayerStyle.IPOD -> com.mochyy.mochymusic.ui.player.ipod.IpodPlayerStyle(modifier, preview)
-        PlayerStyle.VIDEO -> com.mochyy.mochymusic.ui.player.video.VideoPlayerStyle(actions, modifier, preview)
-        PlayerStyle.BEDSIDE -> com.mochyy.mochymusic.ui.player.bedside.BedsidePlayerStyle(actions, modifier, preview)
-        PlayerStyle.BEDSIDE_TILES -> com.mochyy.mochymusic.ui.player.bedside.BedsideTilesStyle(actions, modifier, preview)
-        PlayerStyle.NAMIDA -> com.mochyy.mochymusic.ui.player.namida.NamidaPlayerStyle(actions, modifier, preview)
-        PlayerStyle.APPLE_MUSIC -> com.mochyy.mochymusic.ported.PortedPlayerHost(style, actions, modifier, preview)
-        PlayerStyle.TIKTOK -> com.mochyy.mochymusic.ported.PortedPlayerHost(style, actions, modifier, preview)
-        PlayerStyle.MODULE -> ModulePlayerStyle(actions, modifier, preview)
-        PlayerStyle.FLAGSHIP, PlayerStyle.TURNTABLE -> Unit
-    }
+    // the drawing is hooked up in PlayerStyleRegistry.kt, the one place a new style is added
+    PlayerStyleContent(style, actions, modifier, preview)
 }
 
 /** what every alternate style reads from the player */
@@ -266,7 +254,7 @@ private val PosterChevron = 43.dp
  * sideways, the circle swings in from the left.
  */
 @Composable
-private fun PosterPlayerStyle(actions: StyleActions, modifier: Modifier, preview: Boolean) {
+internal fun PosterPlayerStyle(actions: StyleActions, modifier: Modifier, preview: Boolean) {
     val tones = rememberStyleTones()
     val track = rememberStyleTrack()
     val r = rememberResponsive()
@@ -621,7 +609,7 @@ internal fun rememberStyleLyrics(readings: Boolean): StyleLyrics {
         val metadata by connection.mediaMetadata.collectAsState()
         // The flagship's bottom card is what asks for a song's lyrics; a style has no card, so it
         // asks itself. Without this the words only came once the flagship had been shown.
-        val loader: com.mochyy.mochymusic.viewmodels.LyricsScreenViewModel = androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel()
+        val loader: com.mochyy.mochymusic.viewmodels.LyricsScreenViewModel = org.koin.compose.viewmodel.koinViewModel()
         androidx.compose.runtime.LaunchedEffect(metadata?.id) {
             metadata?.let(loader::ensureLyricsLoaded)
         }
@@ -713,7 +701,7 @@ private fun CircleCover(
  * the playhead, with the elapsed and total times riding either side of it in huge type.
  */
 @Composable
-private fun TimelinePlayerStyle(actions: StyleActions, modifier: Modifier, preview: Boolean) {
+internal fun TimelinePlayerStyle(actions: StyleActions, modifier: Modifier, preview: Boolean) {
     val tones = rememberStyleTones()
     val track = rememberStyleTrack()
     val position = rememberLivePosition(animated = !preview)
@@ -777,7 +765,7 @@ private fun TimelinePlayerStyle(actions: StyleActions, modifier: Modifier, previ
  * same played/remaining split and riding times as the timeline.
  */
 @Composable
-private fun LyricsPlayerStyle(actions: StyleActions, modifier: Modifier, preview: Boolean) {
+internal fun LyricsPlayerStyle(actions: StyleActions, modifier: Modifier, preview: Boolean) {
     val tones = rememberStyleTones()
     val track = rememberStyleTrack()
     val position = rememberLivePosition(animated = !preview)

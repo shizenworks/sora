@@ -28,6 +28,7 @@ import com.mochyy.mochymusic.R
 import com.mochyy.mochymusic.ui.screens.settings.devspace.DevPlaygroundRoute
 import com.mochyy.mochymusic.ui.screens.settings.importsync.ImportSyncRoute
 import com.mochyy.mochymusic.ui.screens.settings.integrations.IntegrationsRoute
+import com.mochyy.mochymusic.ui.screens.settings.integrations.AndroidAutoSettingsRoute
 import com.mochyy.mochymusic.ui.screens.settings.integrations.ScrobbleServiceRoute
 import com.mochyy.mochymusic.ui.screens.settings.integrations.backup.BackupRoute
 import com.mochyy.mochymusic.ui.screens.settings.integrations.discord.DiscordRoute
@@ -49,11 +50,14 @@ val SettingsPaneRoutes = setOf(
     "general_settings",
     PlaybackSettingsRoute,
     NowPlayingSettingsRoute,
+    "appearance_settings",
+    "nav_bar_settings",
     "customisation_settings",
     "gesture_settings",
     StorageRoute,
     IntegrationsRoute,
     com.mochyy.mochymusic.ui.screens.settings.integrations.SourcesRoute,
+    AndroidAutoSettingsRoute,
     DiscordRoute,
     ScrobbleServiceRoute,
     com.mochyy.mochymusic.ui.screens.settings.integrations.ListenBrainzRoute,
@@ -63,6 +67,7 @@ val SettingsPaneRoutes = setOf(
     "listen_together",
     "listen_together_settings",
     "listen_together_chat",
+    AiTranslatorSettingsRoute,
     ModulesRoute,
     "module/{id}",
     "cipher_settings",
@@ -107,7 +112,7 @@ fun NavController.openSettingsPage(route: String) {
 fun SettingsListPane(navController: NavController, selectedRoute: String?, modifier: Modifier = Modifier) {
     val windowWidth = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp.dp
     Box(modifier = modifier.width(settingsListWidth(windowWidth)).fillMaxHeight()) {
-        MochySettingsScreen(navController = navController, pane = SettingsPane(selectedRoute))
+        AndroidMochySettingsScreen(navController = navController, pane = SettingsPane(selectedRoute))
         Box(
             modifier = Modifier
                 .align(Alignment.CenterEnd)

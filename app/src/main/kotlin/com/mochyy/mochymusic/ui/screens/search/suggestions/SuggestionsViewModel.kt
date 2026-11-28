@@ -5,7 +5,6 @@ package com.mochyy.mochymusic.ui.screens.search.suggestions
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,7 +13,6 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import javax.inject.Inject
 import com.music.innertube.YouTube
 import com.music.innertube.models.SongItem
 import com.music.innertube.models.ArtistItem
@@ -23,8 +21,8 @@ import com.mochyy.mochymusic.playback.PlayerConnection
 import com.mochyy.mochymusic.playback.queues.YouTubeQueue
 import androidx.navigation.NavController
 
-@HiltViewModel
-class SuggestionsViewModel @Inject constructor() : ViewModel() {
+// Koin builds it (di/koin/OnlineKoin.kt); it stays in :app for the player queue and Apple scraper
+class SuggestionsViewModel : ViewModel() {
     private var currentLoadedRegion: String? = null
 
     private val _suggestionTracks = MutableStateFlow<List<SuggestionTrack>?>(null)

@@ -19,7 +19,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.compose.ui.res.stringResource
 import com.mochyy.mochymusic.R
 import com.mochyy.mochymusic.ui.component.LocalMenuState
@@ -27,12 +26,13 @@ import com.mochyy.mochymusic.ui.screens.library.showConfirm
 import com.mochyy.mochymusic.viewmodels.TransferStep
 import com.mochyy.mochymusic.viewmodels.TransferViewModel
 import kotlinx.coroutines.launch
+import org.koin.compose.viewmodel.koinViewModel
 
 private val ZipTypes = arrayOf("application/zip", "application/x-zip-compressed", "application/octet-stream")
 
 // export your user data to one zip for a new phone, or bring such a zip back in
 @Composable
-internal fun TransferSection(viewModel: TransferViewModel = hiltViewModel()) {
+internal fun TransferSection(viewModel: TransferViewModel = koinViewModel()) {
     val export by viewModel.export.collectAsState()
     val import by viewModel.import.collectAsState()
     val menuState = LocalMenuState.current
@@ -41,24 +41,24 @@ internal fun TransferSection(viewModel: TransferViewModel = hiltViewModel()) {
     var waitingForPermission by remember { mutableStateOf<Uri?>(null) }
 
     val exportPicker = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri ->
-        if (uri != null) viewModel.exportTo(uri)
+        if (uri != null) viewModel.exportTo(uri.toString())
     }
     // local songs come back through the phone's music library, a no still imports everything else
     val audioPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
-        waitingForPermission?.let(viewModel::importFrom)
+        waitingForPermission?.let { viewModel.importFrom(it.toString()) }
         waitingForPermission = null
     }
     val importPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
         checkError = null
         scope.launch {
-            viewModel.check(uri)
+            viewModel.check(uri.toString())
                 .onSuccess { manifest ->
                     if (viewModel.wantsAudioPermission(manifest)) {
                         waitingForPermission = uri
-                        audioPermission.launch(TransferViewModel.AudioPermission)
+                        audioPermission.launch(viewModel.audioPermission)
                     } else {
-                        viewModel.importFrom(uri)
+                        viewModel.importFrom(uri.toString())
                     }
                 }
                 .onFailure { checkError = it.message }

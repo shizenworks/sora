@@ -18,7 +18,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
-import java.time.LocalDateTime
+import com.mochyy.mochymusic.db.nowLocal
 
 /**
  * Pushes the "Edit playlist" sheet (the mock under "Edit playlist"): the same carousel, title and
@@ -92,7 +92,7 @@ fun PopupSheetState.showEditPlaylistSheet(
                                 name = name,
                                 description = form.description.trim().ifBlank { null },
                                 thumbnailUrl = thumbnail,
-                                lastUpdateTime = LocalDateTime.now(),
+                                lastUpdateTime = nowLocal(),
                             )
                             database.update(saved)
                             if (thumbnail != current.thumbnailUrl) {

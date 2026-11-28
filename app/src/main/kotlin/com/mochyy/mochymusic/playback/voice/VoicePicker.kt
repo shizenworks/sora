@@ -42,7 +42,7 @@ class VoicePicker(
     private val hideVideos: Boolean get() = context.dataStore.get(HideVideoSongsKey, false)
 
     // null when nothing matched; youtube trouble is thrown only when the library had nothing either, so the car can say which it was
-    suspend fun queueFor(request: VoiceRequest): Queue? = withContext(Dispatchers.IO) {
+    suspend fun queueFor(request: VoiceRequest, allowOnline: Boolean = true): Queue? = withContext(Dispatchers.IO) {
         when (request) {
             VoiceRequest.Resume -> startingPoint()
             is VoiceRequest.Liked -> listQueue(
@@ -55,7 +55,7 @@ class VoicePicker(
                 database.downloadedSongs(SongSortType.CREATE_DATE, descending = true).first(),
                 request.shuffle,
             )
-            else -> ownPlaylist(request) ?: onlineOrLibrary(request)
+            else -> ownPlaylist(request, allowOnline) ?: if (allowOnline) onlineOrLibrary(request) else library(request)
         }
     }
 
@@ -69,7 +69,7 @@ class VoicePicker(
     }
 
     // a playlist of your own goes first, but a top result only takes it when the name matches word for word
-    private suspend fun ownPlaylist(request: VoiceRequest): Queue? {
+    private suspend fun ownPlaylist(request: VoiceRequest, allowOnline: Boolean): Queue? {
         val (name, least) = when (request) {
             is VoiceRequest.Playlist -> request.name to 1
             is VoiceRequest.Top -> request.text to 3
@@ -82,6 +82,7 @@ class VoicePicker(
             ?.first ?: return null
         val songs = database.playlistSongs(best.id).first().map { it.song }
         if (songs.isNotEmpty()) return listQueue(best.playlist.name, songs, request.shuffle)
+        if (!allowOnline) return null
         // a youtube playlist saved without its songs plays straight from youtube
         val browseId = best.playlist.browseId ?: return null
         return youtubePlaylist(browseId, best.playlist.name, request.shuffle)

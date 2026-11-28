@@ -227,7 +227,7 @@ private fun outputCard(c: Context, input: StatsInput): StatCard {
 // a line with nothing to say isn't drawn at all, rather than drawn as "-"
 private fun line(label: String, value: String?): Pair<String, String>? = value?.let { label to it }
 
-private val LosslessCodecs = setOf("FLAC", "ALAC", "PCM")
+internal val LosslessCodecs = setOf("FLAC", "ALAC", "PCM")
 private val FixedRateKinds = setOf(AudioOutputs.Kind.PHONE, AudioOutputs.Kind.WIRED)
 
 // a dot and the codec like the mock (".flac" shown as .Flac), but acronyms said letter by letter stay in capitals

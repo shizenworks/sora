@@ -21,6 +21,7 @@
     <string name="storage_hint_cache">The cache is the easy one. Clearing it frees %1$s and songs simply stream again.</string>
     <string name="storage_hint_downloads">Downloads take the most room. Manage downloads shows the biggest ones and the ones you barely play.</string>
     <string name="storage_cache_limit">Set music cache limit</string>
+    <string name="storage_image_cache_limit">Image cache limit</string>
     <string name="storage_cache_none">No cache</string>
     <string name="storage_cache_unlimited">Unlimited</string>
     <string name="storage_cache_off">Off</string>

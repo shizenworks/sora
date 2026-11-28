@@ -19,7 +19,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import org.koin.compose.viewmodel.koinViewModel
 import com.mochyy.mochymusic.R
 import com.mochyy.mochymusic.modules.skin.ActiveSkin
 import com.mochyy.mochymusic.ui.screens.settings.modules.ModuleOptions
@@ -31,7 +31,7 @@ fun SkinCustomiseSheet(onDismiss: () -> Unit) {
     val style = ActiveSkin.style
     val skin = style?.skin
     val customise = style?.player?.customise
-    val viewModel: ModulesViewModel = hiltViewModel()
+    val viewModel: ModulesViewModel = koinViewModel()
     val entries by viewModel.entries.collectAsState()
     val entry = skin?.let { s -> entries.firstOrNull { it.id == s.moduleId } }
     // the settings in the order the player listed them, leaving out any key the module doesn't have

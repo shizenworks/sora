@@ -6,16 +6,24 @@ import android.content.res.Configuration
 import androidx.activity.compose.LocalActivity
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.platform.LocalConfiguration
 
 // a phone on its side is always wider than this, a phone held upright never is, and every tablet is
 private const val WideMinWidthDp = 600
 
+// the tablet layout switched on in Appearance: the wide layout on any screen, not just a wide one
+object TabletLayout {
+    var forced by mutableStateOf(false)
+}
+
 // the regular layout stays for a phone held upright; on its side or on a tablet the app gets the wide one
 @Composable
 @ReadOnlyComposable
-fun isWideLayout(): Boolean = LocalConfiguration.current.screenWidthDp >= WideMinWidthDp
+fun isWideLayout(): Boolean = TabletLayout.forced || LocalConfiguration.current.screenWidthDp >= WideMinWidthDp
 
 // the window is wider than it is tall, so the player can put its cover beside the controls
 @Composable

@@ -8,16 +8,12 @@ import com.mochyy.mochymusic.db.MusicDatabase
 import com.mochyy.mochymusic.db.entities.LyricsEntity
 import com.mochyy.mochymusic.lyrics.LyricsHelper
 import com.mochyy.mochymusic.models.MediaMetadata
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
-@HiltViewModel
-class LyricsScreenViewModel
-@Inject
-constructor(
+// Koin builds it (di/koin/PlayerTvKoin.kt): the lyrics screen is a player piece, still in :app
+class LyricsScreenViewModel(
     private val lyricsHelper: LyricsHelper,
     // Exposed so the lyrics screen can hand it to LyricsTranslationHelper, which persists a
     // finished translation against the song row.

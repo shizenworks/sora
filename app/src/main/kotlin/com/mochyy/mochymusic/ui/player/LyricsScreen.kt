@@ -67,6 +67,7 @@ import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import com.mochyy.mochymusic.ui.player.menu.LyricsOverflowButton
 import com.mochyy.mochymusic.ui.player.share.LyricsShareSession
 import com.mochyy.mochymusic.ui.player.share.song.LyricsSongShare
 import com.mochyy.mochymusic.ui.player.share.ShareFlightSource
@@ -87,7 +88,7 @@ import androidx.compose.ui.unit.constrainWidth
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.offset
 import androidx.compose.ui.unit.sp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import org.koin.compose.viewmodel.koinViewModel
 import androidx.palette.graphics.Palette
 import coil3.imageLoader
 import coil3.request.ImageRequest
@@ -102,7 +103,11 @@ import com.mochyy.mochymusic.extensions.toggleRepeatMode
 import com.mochyy.mochymusic.constants.AiProviderKey
 import com.mochyy.mochymusic.constants.DeeplApiKey
 import com.mochyy.mochymusic.constants.DeeplFormalityKey
+import com.mochyy.mochymusic.constants.LyricsClickKey
+import com.mochyy.mochymusic.constants.LyricsScrollKey
 import com.mochyy.mochymusic.constants.LyricsHighBloomKey
+import com.mochyy.mochymusic.constants.LyricsInterludeDotsKey
+import com.mochyy.mochymusic.constants.LyricsLineBounceKey
 import com.mochyy.mochymusic.constants.LyricsSoftLightKey
 import com.mochyy.mochymusic.constants.OpenRouterApiKey
 import com.mochyy.mochymusic.constants.OpenRouterBaseUrlKey
@@ -241,7 +246,7 @@ fun LyricsScreen(
     modifier: Modifier = Modifier,
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
-    val viewModel: LyricsScreenViewModel = hiltViewModel()
+    val viewModel: LyricsScreenViewModel = koinViewModel()
     val density = LocalDensity.current
 
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
@@ -328,7 +333,9 @@ fun LyricsScreen(
     // than conditionally rendering dots inside the next line's item, as before — is what stops the
     // list jumping. A gap's row grows in when the gap starts and collapses, in step with the
     // recenter scroll, when the next line takes over (see the recenter effect below).
-    val rows = remember(lines) { buildLyricRows(lines) }
+    val (interludeDots) = rememberPreference(LyricsInterludeDotsKey, defaultValue = true)
+    val (lineBounce) = rememberPreference(LyricsLineBounceKey, defaultValue = true)
+    val rows = remember(lines, interludeDots) { buildLyricRows(lines, interludeDots) }
 
     /** Lyric line index -> its row in [rows]. Gap rows sit between lines, so the two differ. */
     val rowOfLine = remember(rows, lines) {
@@ -351,6 +358,9 @@ fun LyricsScreen(
     }
     val listState = rememberLazyListState(initialFirstVisibleItemIndex = initialRow)
     var followPlayback by remember { mutableStateOf(true) }
+    // both on by default; tap-to-seek off makes a line tap do nothing, auto-scroll off keeps the list still until the back pill
+    val (tapToSeek) = rememberPreference(LyricsClickKey, defaultValue = true)
+    val (autoScroll) = rememberPreference(LyricsScrollKey, defaultValue = true)
 
     // What the card is showing: the page's copy of it (a line, or the dots of a gap) is what the card grows into.
     val cardSlot by remember(lines) { derivedStateOf { tickerSlot(lines, progress.value.position + lyricsOffsetMs) } }
@@ -382,8 +392,8 @@ fun LyricsScreen(
         if (userScrolling) followPlayback = false
     }
 
-    LaunchedEffect(userScrolling, followPlayback) {
-        if (!followPlayback && !userScrolling) {
+    LaunchedEffect(userScrolling, followPlayback, autoScroll) {
+        if (!followPlayback && !userScrolling && autoScroll) {
             delay(IdleRecenterDelayMs)
             followPlayback = true
         }
@@ -486,6 +496,8 @@ fun LyricsScreen(
         }
         } finally {
             isAutoScrolling = false
+            // auto-scroll off: one recentre, then the list stays where it is
+            if (!autoScroll) followPlayback = false
         }
         }
     }
@@ -569,29 +581,27 @@ fun LyricsScreen(
 
     Column(modifier = modifier.fillMaxSize()) {
 
-        if (showHeader) Row(
+        Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .fillMaxWidth()
-                .stableStatusBarsPadding()
+                .then(if (showHeader) Modifier.stableStatusBarsPadding() else Modifier)
                 .padding(horizontal = LyricsHeaderArtX)
-                // Matches where the morph layer actually draws the cover, so the hitbox sits on
-                // the artwork and the menu centres against it.
-                .padding(top = LyricsHeaderArtTopFromStatusBar, bottom = 10.dp)
+                .padding(top = if (showHeader) LyricsHeaderArtTopFromStatusBar else 0.dp, bottom = 10.dp),
         ) {
-
-            Box(
-                modifier = Modifier
-                    .size(LyricsHeaderArtSize)
-                    .clip(RoundedCornerShape(10.dp))
-
-                    .clickable { if (immersive) immersive = false else onClose() }
+            if (showHeader) {
+                Box(
+                    modifier = Modifier
+                        .size(LyricsHeaderArtSize)
+                        .clip(RoundedCornerShape(10.dp))
+                        .clickable { if (immersive) immersive = false else onClose() },
+                )
+            }
+            Spacer(Modifier.weight(1f))
+            LyricsOverflowButton(
+                songId = mediaMetadata?.id,
+                enabled = !isMorphing && !isSheetDragging,
             )
-
-            Spacer(modifier = Modifier.width(18.dp))
-
-            // No menu button up here: on the lyrics page the options button takes the chevron's
-            // slot next to the seek bar (BottomSheetPlayer), within reach of the thumb.
         }
 
         val listPadding = remember { LyricsListPadding() }
@@ -817,11 +827,12 @@ fun LyricsScreen(
                                     alignment = lineAlignment,
                                     waveEnabled = lyricsWaveAnimation && !suppressEffects,
                                     motionStyle = motionStyle,
+                                    lineBounce = lineBounce,
                                     highBloom = lyricsHighBloom,
                                     blend = blend,
                                     onClick = {
                                         // Untimed lines have nowhere to seek to.
-                                        if (!unsynced) {
+                                        if (!unsynced && tapToSeek) {
                                             playerConnection.player.seekTo(entry.time)
                                             followPlayback = true
                                         }
@@ -855,6 +866,22 @@ fun LyricsScreen(
                         }
                     }
                 }
+            }
+
+            // auto-scroll off: the list stays put after a scroll, this brings it back to the playing line
+            if (!autoScroll && !followPlayback && lines.isNotEmpty()) {
+                Text(
+                    text = stringResource(R.string.lyrics_back_to_current),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = Color.White,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 12.dp)
+                        .clip(RoundedCornerShape(50))
+                        .background(Color.White.copy(alpha = 0.15f))
+                        .clickable { followPlayback = true }
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                )
             }
 
             // Repeat and like used to float here at the top right; they now sit under the playback
@@ -953,7 +980,8 @@ internal sealed interface LyricRow {
     }
 }
 
-internal fun buildLyricRows(lines: List<LyricsEntry>): List<LyricRow> {
+internal fun buildLyricRows(lines: List<LyricsEntry>, showInterludes: Boolean = true): List<LyricRow> {
+    if (!showInterludes) return lines.mapIndexed { index, line -> LyricRow.Line(index, line) }
     if (lines.isEmpty()) return emptyList()
     val rows = ArrayList<LyricRow>(lines.size + 4)
 

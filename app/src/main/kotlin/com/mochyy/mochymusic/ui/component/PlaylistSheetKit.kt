@@ -298,9 +298,6 @@ internal fun SheetOptionRow(
     }
 }
 
-/** How big a row's icon is drawn. There's no disc behind it any more, so the glyph itself is the marker. */
-internal val SheetIconSize = 20.dp
-
 /** The plain white icon every row of the sheets starts with. */
 @Composable
 internal fun SheetIcon(

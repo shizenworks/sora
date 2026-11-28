@@ -174,4 +174,16 @@
     <string name="import_component_mirror_yt_title">Also create on YouTube</string>
     <string name="import_component_mirror_yt_desc">Playlists and likes are added to your YouTube account too.</string>
     <string name="import_component_mirror_yt_sync_likes">YouTube sync keeps likes the same on both sides, so these likes will still be added to YouTube the next time it syncs.</string>
+    <string name="settings_index_youtube_sync">YouTube Music sync</string>
+    <string name="yt_sync_switch_accounts_title">Switch account</string>
+    <string name="yt_sync_switch_accounts_desc">Keep several YouTube Music accounts and switch between them</string>
+    <string name="account_switcher_title">Account switcher</string>
+    <string name="account_switcher_saved_header">Saved accounts</string>
+    <string name="account_switcher_empty">No saved accounts yet. Add one to switch between them.</string>
+    <string name="account_switcher_active">Active</string>
+    <string name="account_switcher_remove">Remove</string>
+    <string name="account_switcher_remove_title">Remove this account?</string>
+    <string name="account_switcher_remove_body">Only the saved copy goes, your YouTube account is not touched. If it is the signed-in account, you are signed out.</string>
+    <string name="account_switcher_add">Add account</string>
+    <string name="account_switcher_add_desc">Sign in to another YouTube Music account</string>
 </resources>

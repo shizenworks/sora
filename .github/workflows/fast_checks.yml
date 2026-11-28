@@ -1,0 +1,105 @@
+name: Fast checks
+
+# Per-PR checks that stay small: compile the app's Kotlin for one ABI/flavour and
+# run JVM unit tests of the shared and provider modules. The full assemble + lint
+# runs on pushes to dev (Build PR workflow) instead of on every pull request.
+on:
+  # branch pushes run it in a contributor's fork
+  push:
+    branches: ['feat/**']
+  pull_request:
+    branches: [dev]
+  workflow_dispatch:
+
+concurrency:
+  group: fast-checks-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  JAVA_TOOL_OPTIONS: -Djava.net.preferIPv4Stack=true
+
+jobs:
+  compile:
+    name: Compile Android and desktop Kotlin
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+      - uses: actions/setup-java@v5
+        with:
+          java-version: 21
+          distribution: temurin
+      - uses: gradle/actions/setup-gradle@v5
+        with:
+          cache-read-only: ${{ github.event_name == 'pull_request' }}
+      - name: String resources
+        run: python3 scripts/ci/check_string_resources.py
+      - run: chmod +x gradlew
+      - name: Compile
+        run: ./gradlew --console=plain :app:compileArm64FossDebugKotlin :desktopApp:compileKotlinJvm :shared:compileCommonMainKotlinMetadata --warning-mode summary
+      # app/src/test is otherwise never run; the CrossMix package's tests reuse the compile above
+      - name: CrossMix and updater app unit tests
+        run: ./gradlew --console=plain :app:testArm64FossDebugUnitTest --tests 'com.mochyy.mochymusic.crossmix.*' --tests 'com.mochyy.mochymusic.core.updater.*' --tests 'com.mochyy.mochymusic.utils.*' --warning-mode summary
+      - name: Database schema
+        run: |
+          git add --intent-to-add app/schemas
+          if ! git diff --quiet -- app/schemas; then
+            git diff --stat -- app/schemas
+            echo "The Room schema changed. If that is intended: bump MusicDatabaseVersion, add its migration to AllMigrations, and commit the new app/schemas file (it is in this run's artifacts)."
+            exit 1
+          fi
+      # desktop and iOS declare the same database a second time (shared/src/nonAndroidMain); its export for the
+      # current MusicDatabaseVersion must match Android's byte for byte, identity hash included
+      - name: Desktop database schema
+        run: |
+          version=$(sed -n 's/^const val MusicDatabaseVersion = \([0-9][0-9]*\)$/\1/p' shared/src/commonMain/kotlin/com/mochyy/mochymusic/db/MochyDatabase.kt)
+          if [ -z "$version" ]; then
+            echo "Could not read MusicDatabaseVersion from shared/src/commonMain/kotlin/com/mochyy/mochymusic/db/MochyDatabase.kt"
+            exit 1
+          fi
+          ./gradlew --console=plain :shared:kspKotlinDesktop --warning-mode summary
+          android=app/schemas/com.mochyy.mochymusic.db.InternalDatabase/$version.json
+          desktop=shared/build/schemas/com.mochyy.mochymusic.db.InternalDatabase/$version.json
+          for f in "$android" "$desktop"; do
+            if [ ! -f "$f" ]; then
+              echo "Missing $f (MusicDatabaseVersion = $version)"
+              exit 1
+            fi
+          done
+          if ! diff -u "$android" "$desktop"; then
+            echo "The desktop/iOS InternalDatabase (shared/src/nonAndroidMain) no longer exports the same schema as the app's. Make its entities, views and converters match app/src/main/kotlin/com/mochyy/mochymusic/db/MusicDatabase.kt."
+            exit 1
+          fi
+      - name: Upload schema on change
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: room-schemas
+          path: |
+            app/schemas/
+            shared/build/schemas/
+          retention-days: 7
+
+  unit-tests:
+    name: Shared and provider unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+      - uses: actions/setup-java@v5
+        with:
+          java-version: 21
+          distribution: temurin
+      - uses: gradle/actions/setup-gradle@v5
+        with:
+          cache-read-only: ${{ github.event_name == 'pull_request' }}
+      - run: chmod +x gradlew
+      - name: Run module tests
+        # Multiplatform modules run their JVM tests; Android library modules run debug unit tests.
+        # A module added later joins automatically through scripts/fast_check_tasks.py.
+        run: |
+          tasks=$(python3 scripts/fast_check_tasks.py)
+          echo "Tasks: $tasks"
+          ./gradlew --console=plain --continue $tasks

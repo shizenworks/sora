@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
@@ -179,6 +180,12 @@ private fun VideoModeScreen(actions: StyleActions, modifier: Modifier) {
     val video = lookup.video
     // collapsed, the mini player plays this same session; the mode only holds it while any of it shows
     val session = if (sheetShowing) video?.let { rememberYouTubeVideoSession(it.videoId) } else null
+    // the picture-in-picture window mirrors this session, but only while a picture is up on screen
+    val pipSession = session?.takeIf { it.hasFrame }
+    DisposableEffect(pipSession) {
+        VideoPip.session = pipSession
+        onDispose { if (VideoPip.session === pipSession) VideoPip.session = null }
+    }
     if (session != null && video != null) DriveYouTubeVideo(session, video, running, ModeAutoCap)
     // once the player is all the way open the window turns sideways and stays that way until it closes to the mini player;
     // until the window has turned (or for good, with landscape locked) the mode turns itself, so it's sideways from the first frame

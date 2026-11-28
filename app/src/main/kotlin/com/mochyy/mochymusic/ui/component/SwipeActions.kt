@@ -85,6 +85,7 @@ import com.mochyy.mochymusic.LocalDownloadUtil
 import com.mochyy.mochymusic.LocalPlayerConnection
 import com.mochyy.mochymusic.R
 import com.mochyy.mochymusic.db.entities.SongEntity
+import com.mochyy.mochymusic.db.entities.toggleLibrary
 import com.mochyy.mochymusic.extensions.metadata
 import com.mochyy.mochymusic.importer.ImportSource
 import com.mochyy.mochymusic.models.toMediaMetadata
@@ -100,10 +101,10 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import java.time.LocalDateTime
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.math.sign
+import com.mochyy.mochymusic.db.nowLocal
 
 /** one side of a swipeable row: what it shows while you drag, and what it does once you let go past the line */
 @Immutable
@@ -703,7 +704,7 @@ fun librarySwipeAction(song: SongItem): SwipeAction {
         if (adding) {
             database.transaction {
                 insert(song.toMediaMetadata())
-                inLibrary(song.id, LocalDateTime.now())
+                inLibrary(song.id, nowLocal())
                 addLibraryTokens(song.id, song.libraryAddToken, song.libraryRemoveToken)
             }
         } else {

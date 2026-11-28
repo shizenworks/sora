@@ -9,6 +9,9 @@ import android.content.Context
 import android.content.res.Configuration
 import android.os.Build
 import androidx.datastore.preferences.core.edit
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.ProcessLifecycleOwner
 import coil3.ImageLoader
 import coil3.PlatformContext
 import coil3.SingletonImageLoader
@@ -26,7 +29,9 @@ import com.music.kugou.KuGou
 import com.mochyy.mochymusic.constants.*
 import com.mochyy.mochymusic.di.ApplicationScope
 import com.mochyy.mochymusic.i18n.AppLanguage
+import com.mochyy.mochymusic.lyrics.JapaneseLanguagePackManager
 import com.mochyy.mochymusic.extensions.toEnum
+import com.mochyy.mochymusic.utils.CrashLogTree
 import com.mochyy.mochymusic.utils.CrashReporter
 import com.mochyy.mochymusic.utils.PreferencesCache
 import com.mochyy.mochymusic.utils.cipher.CipherDeobfuscator
@@ -64,6 +69,10 @@ class App : Application(), SingletonImageLoader.Factory {
     @Inject
     lateinit var musicDatabase: com.mochyy.mochymusic.db.MusicDatabase
 
+    // the same @Singleton MusicDatabase wraps; handed to Koin so shared ViewModels read this one database
+    @Inject
+    lateinit var internalDatabase: com.mochyy.mochymusic.db.InternalDatabase
+
     // only built once a tv is paired, it pulls in the downloads
     @Inject
     lateinit var phoneLink: dagger.Lazy<com.mochyy.mochymusic.link.phone.PhoneLinkHost>
@@ -79,6 +88,9 @@ class App : Application(), SingletonImageLoader.Factory {
         super.onCreate()
 
         AppLanguage.initialize(this)
+        // the shared font state starts on the system font until it has the app's own inter
+        com.mochyy.mochymusic.ui.theme.AppFont.inter = com.mochyy.mochymusic.ui.theme.AndroidInter
+        com.mochyy.mochymusic.ui.component.pageMediaTurns = { com.mochyy.mochymusic.ui.motion.motionOn() }
 
         // share one okhttp connection pool and dispatcher between innertube, coil, and the rest of the app
         YouTube.configureSharedPool(AppProxy.connectionPool, AppProxy.dispatcher)
@@ -89,7 +101,22 @@ class App : Application(), SingletonImageLoader.Factory {
         }
         Timber.plant(com.mochyy.mochymusic.utils.CrashLogTree())
 
-        PreferencesCache.start(this, applicationScope)
+        PreferencesCache.start(dataStore, applicationScope)
+        // shared ViewModels: Hilt's database and the sealed store, never a second of either
+        com.mochyy.mochymusic.di.startMochyKoin(database = { internalDatabase }, preferences = { dataStore })
+        // and the artist pages, which only Android can read through innertube's YouTube facade
+        com.mochyy.mochymusic.di.loadAndroidKoin(this)
+        // the modules view model, over Hilt's one module registry and catalog
+        com.mochyy.mochymusic.di.koin.loadModulesKoin(this)
+        // the Android side of the shared storage, backup and scrobbling pages
+        com.mochyy.mochymusic.di.koin.loadStorageKoin(this)
+        // the import and sync settings' platform half, over Hilt's own services
+        com.mochyy.mochymusic.di.koin.startImportSyncKoin(this)
+        if (BuildConfig.COMPACT_APK) {
+            JapaneseLanguagePackManager.initialize(this)
+            ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {
+                override fun onStart(owner: LifecycleOwner) = JapaneseLanguagePackManager.onForeground()
+            })
         applicationScope.launch(Dispatchers.IO) { com.mochyy.mochymusic.utils.CrashReporter.exportPending(this@App) }
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
             applicationScope.launch(Dispatchers.Default) {
@@ -119,18 +146,16 @@ class App : Application(), SingletonImageLoader.Factory {
         }
 
         applicationScope.launch(Dispatchers.IO) {
-            // the plain 5 s crossfade used to be the default and onboarding's pick, and it never mixed a thing: anyone left on it moves to crossmix once
+            // the ai translator's model used to be shared by openrouter and custom: a custom setup keeps its model, once
             try {
-                if (dataStore.data.first()[CrossmixDefaultMovedKey] != true) {
-                    dataStore.edit { prefs ->
-                        if (prefs[CrossmixModeKey] == CrossmixMode.AUTO_CROSSFADE.name) prefs[CrossmixModeKey] = CrossmixMode.CROSSMIX.name
-                        prefs[CrossmixDefaultMovedKey] = true
-                    }
-                }
+                dataStore.edit { com.mochyy.mochymusic.constants.AiTranslatorConfig.migrateLegacyCustomModel(it) }
             } catch (e: Exception) {
                 reportException(e)
             }
         }
+
+        // the plain crossfade (AUTO_CROSSFADE) is a choice, not a leftover: nobody is moved off it to Crossmix,
+        // which analyses every song and costs more battery. Those already moved by an earlier version stay where they are.
 
         applicationScope.launch(Dispatchers.IO) {
             // lyrics saved by older versions are cleared once, the first time 7.1.0 runs, so every

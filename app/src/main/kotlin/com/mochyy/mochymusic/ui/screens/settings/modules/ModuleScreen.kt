@@ -45,7 +45,7 @@ import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.navigation.compose.hiltViewModel
+import org.koin.compose.viewmodel.koinViewModel
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import com.mochyy.mochymusic.LocalPlayerAwareWindowInsets
@@ -66,7 +66,7 @@ import kotlinx.coroutines.launch
 private val BannerHeight = 260.dp
 
 @Composable
-fun ModuleScreen(navController: NavController, id: String, viewModel: ModulesViewModel = hiltViewModel()) {
+fun ModuleScreen(navController: NavController, id: String, viewModel: ModulesViewModel = koinViewModel()) {
     val entries by viewModel.entries.collectAsState()
     val entry = entries.firstOrNull { it.id == id }
     val context = LocalContext.current

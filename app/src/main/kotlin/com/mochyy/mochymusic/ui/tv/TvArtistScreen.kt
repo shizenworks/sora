@@ -39,7 +39,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.navigation.compose.hiltViewModel
+import org.koin.compose.viewmodel.koinViewModel
 import com.music.innertube.models.ArtistItem
 import com.music.innertube.models.SongItem
 import com.mochyy.mochymusic.LocalPlayerConnection
@@ -50,7 +50,7 @@ import com.mochyy.mochymusic.viewmodels.ArtistViewModel
 // the artist page from the concept: their photo across the page, who they are and what's new on the left, their music on the right
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-internal fun TvArtistScreen(viewModel: ArtistViewModel = hiltViewModel()) {
+internal fun TvArtistScreen(viewModel: ArtistViewModel = koinViewModel()) {
     val actions = LocalTvActions.current
     val player = LocalPlayerConnection.current
     val page by viewModel.page.collectAsState()

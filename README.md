@@ -230,6 +230,7 @@ Forks are welcome, that's what open source is for! Just two asks:
 - **Auto Eq** ([Web](https://autoeq.app)) -- The equalizer database
 - **lrc.red** ([Web](https://lrc.red)) -- Word-timed lyrics for millions of songs, free for everyone
 - **InnertubeX** by [nyxiereal](https://github.com/nyxiereal) [Their repo](https://github.com/metrolistGroup/innertubex) For The Youtube stream extration lib
+- **libopus** by [Xiph.Org](https://opus-codec.org) ([Repository](https://github.com/xiph/opus)) and the **Media3 Opus decoder** by the Android Open Source Project -- In-process Opus decoding.
 
 ---
 

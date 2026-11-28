@@ -40,7 +40,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import org.koin.compose.viewmodel.koinViewModel
 import com.mochyy.mochymusic.LocalDatabase
 import com.mochyy.mochymusic.R
 import com.mochyy.mochymusic.db.entities.Playlist
@@ -64,7 +64,6 @@ import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.text.Collator
-import java.time.LocalDateTime
 import java.util.Locale
 
 /** How many playlists the "recents" section shows. */
@@ -198,7 +197,7 @@ fun AddToPlaylistDialog(
     initialTextFieldValue: String? = null,
     onGetSong: suspend (Playlist) -> List<String>,
     onDismiss: () -> Unit,
-    viewModel: PlaylistsViewModel = hiltViewModel(),
+    viewModel: PlaylistsViewModel = koinViewModel(),
     topSongId: String? = null,
     topSongArtworkUrl: String? = null,
 ) {
@@ -350,7 +349,7 @@ private fun AddToPlaylistContent(
             } else if (all.size > RecentCount) {
                 val recents =
                     all
-                        .sortedByDescending { it.playlist.lastUpdateTime ?: it.playlist.createdAt ?: LocalDateTime.MIN }
+                        .sortedWith(compareByDescending(nullsFirst(naturalOrder<kotlinx.datetime.LocalDateTime>())) { it.playlist.lastUpdateTime ?: it.playlist.createdAt })
                         .take(RecentCount)
                 val collator = Collator.getInstance(Locale.getDefault()).apply { strength = Collator.PRIMARY }
                 val rest = (all - recents.toSet()).sortedWith(compareBy(collator) { it.playlist.name })
@@ -425,7 +424,7 @@ private fun PlaylistPickRow(
 ) {
     val count =
         if (playlist.songCount == 0 && playlist.playlist.remoteSongCount != null) {
-            playlist.playlist.remoteSongCount
+            playlist.playlist.remoteSongCount!!
         } else {
             playlist.songCount
         }

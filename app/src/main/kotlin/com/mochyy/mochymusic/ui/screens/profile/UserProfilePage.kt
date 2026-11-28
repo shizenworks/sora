@@ -90,30 +90,6 @@ import com.mochyy.mochymusic.ui.utils.stableSystemBars
 import com.mochyy.mochymusic.viewmodels.ListenTotal
 import com.mochyy.mochymusic.viewmodels.UserProfileViewModel
 
-internal val ProfilePhotoSize = 98.dp
-internal val ProfilePhotoGrey = Color(0xFF4F4F4F)
-
-// both match the ID card's name and number (weight, tracking), so the copies flying between them
-// are the same text at both ends, only bigger or smaller
-internal val ProfileNameStyle = TextStyle(
-    fontFamily = InterFontFamily,
-    fontWeight = FontWeight.Bold,
-    fontSize = 60.sp,
-    lineHeight = 1.1.em,
-    letterSpacing = (-0.05).em,
-    color = Color.White,
-)
-
-internal val ProfileTagStyle = TextStyle(
-    fontFamily = FontFamily.Monospace,
-    fontWeight = FontWeight.SemiBold,
-    fontSize = 11.sp,
-    letterSpacing = (-0.05).em,
-    color = Color(0xFFB5B5B5),
-)
-
-internal fun profileTag(cardNumber: String) = "PROFILE USR#$cardNumber"
-
 private val NameTagGap = 10.dp
 private val PillGrey = Color(0xFF2E2E2E)
 private val DividerGrey = Color(0xFF262626)

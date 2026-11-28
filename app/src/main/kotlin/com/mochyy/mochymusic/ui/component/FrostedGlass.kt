@@ -2,9 +2,13 @@
 
 package com.mochyy.mochymusic.ui.component
 
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.CornerRadius
@@ -19,6 +23,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.shadow.Shadow
 import androidx.compose.ui.unit.dp
+import com.mochyy.mochymusic.LocalDetailAccentColor
 import com.mochyy.mochymusic.constants.ChromeGlassStyle
 import com.mochyy.mochymusic.constants.ChromeGlassStyleKey
 import com.mochyy.mochymusic.constants.DisableBlurKey
@@ -31,6 +36,36 @@ import com.mochyy.mochymusic.utils.rememberPreference
  * Both bars use what's here, so they can't drift apart.
  */
 
+/** how strongly a coloured page's accent washes over the chrome glass, over its usual dark tint */
+private const val ChromeAccentWash = 0.55f
+
+/**
+ * the open page's accent (a coloured playlist or artist) as a wash for the nav pill and the mini
+ * player. it eases in and out by itself, and it's only read while drawing: a page change repaints
+ * the chrome, never recomposes it
+ *
+ * Kept in :app with the accent composition local it reads; the rest of the glass kit is in :shared
+ * (ui/component/GlassKit.kt) under the same package.
+ */
+@Composable
+fun rememberChromeAccentWash(): () -> Color {
+    val accent = LocalDetailAccentColor.current
+    val wash = remember { androidx.compose.animation.Animatable(Color.Transparent) }
+    LaunchedEffect(accent) {
+        // fading out keeps the page's hue instead of greying through transparent black
+        var hue = Color.Black
+        snapshotFlow { accent.value }.collect { color ->
+            if (color != null) hue = color
+            if (wash.value.alpha == 0f) wash.snapTo(hue.copy(alpha = 0f))
+            wash.animateTo(
+                hue.copy(alpha = if (color != null) ChromeAccentWash else 0f),
+                tween(500),
+            )
+        }
+    }
+    return remember(wash) { { wash.value } }
+}
+
 /** How much of the chrome colour covers the blurred app. */
 private const val FrostTintAlpha = 0.78f
 
@@ -41,9 +76,6 @@ private val ChromeOutlineStroke = Stroke(ChromeOutlineWidthPx)
 
 /** Lifts the chrome off a light page without looking like a dark halo on a black one. */
 val ChromeShadow = Shadow(radius = 6.3.dp, color = Color.Black.copy(alpha = 0.12f), spread = 2.dp)
-
-/** The lit tab's pill in the nav bar, and the round press behind the mini player's buttons. */
-val ChromeHighlightColor = Color.White.copy(alpha = 0.1f)
 
 /**
  * A faint grain over the glass. A dark blur only has a few shades to work with, so without it the

@@ -212,37 +212,36 @@ class PhoneLinkHost @Inject constructor(
                 .put("port", port)
                 .put("pub", LinkAuth.publicText(keyPair))
                 .put("protocol", LinkWire.ProtocolVersion)
-            LinkWire.postJson("${LinkWire.baseUrl(peer.host, peer.port)}/pair", null, body.toString()).use { response ->
-                val text = response.body.string()
-                when {
-                    response.code == 200 -> Unit
-                    response.code == 403 -> throw PairException(PairException.Reason.WrongCode)
-                    response.code == 426 -> throw PairException(PairException.Reason.Outdated)
-                    response.code == 409 && text == FullReply -> throw PairException(PairException.Reason.Full)
-                    else -> throw PairException(PairException.Reason.Failed)
-                }
-                val reply = JSONObject(text)
-                val now = System.currentTimeMillis()
-                val kind = DeviceKind.fromWire(reply.optString("kind").ifBlank { null }, peer.kind)
-                val id = reply.optString("tvId").ifBlank { peer.id }
-                // a device on the old protocol sends no public half; it has to update before it can pair
-                val otherPublic = reply.optString("pub").ifBlank { throw PairException(PairException.Reason.Outdated) }
-                val key = LinkAuth.sharedKey(keyPair, otherPublic, code, listOf(LinkIdentity.id(context), id))
-                    ?: throw PairException(PairException.Reason.Failed)
-                val fresh = PairedDevice(id = id, name = "", key = "", kind = kind, pairedAt = now, lastSeenAt = now)
-                // pairing again keeps the switches set for it before
-                val paired = (_devices.value.firstOrNull { it.id == id } ?: fresh).copy(
-                    name = reply.optString("tvName").ifBlank { peer.name },
-                    key = key,
-                    kind = kind,
-                    pairedAt = now,
-                    lastSeenAt = now,
-                    host = if (kind.isTv) null else peer.host,
-                    port = if (kind.isTv) 0 else reply.optInt("port", LinkWire.PhonePort),
-                )
-                change { list -> list.filterNot { it.id == id } + paired }
-                paired
+            val response = LinkWire.postJson("${LinkWire.baseUrl(peer.host, peer.port)}/pair", null, body.toString())
+            val text = response.text()
+            when {
+                response.code == 200 -> Unit
+                response.code == 403 -> throw PairException(PairException.Reason.WrongCode)
+                response.code == 426 -> throw PairException(PairException.Reason.Outdated)
+                response.code == 409 && text == FullReply -> throw PairException(PairException.Reason.Full)
+                else -> throw PairException(PairException.Reason.Failed)
             }
+            val reply = JSONObject(text)
+            val now = System.currentTimeMillis()
+            val kind = DeviceKind.fromWire(reply.optString("kind").ifBlank { null }, peer.kind)
+            val id = reply.optString("tvId").ifBlank { peer.id }
+            // a device on the old protocol sends no public half; it has to update before it can pair
+            val otherPublic = reply.optString("pub").ifBlank { throw PairException(PairException.Reason.Outdated) }
+            val key = LinkAuth.sharedKey(keyPair, otherPublic, code, listOf(LinkIdentity.id(context), id))
+                ?: throw PairException(PairException.Reason.Failed)
+            val fresh = PairedDevice(id = id, name = "", key = "", kind = kind, pairedAt = now, lastSeenAt = now)
+            // pairing again keeps the switches set for it before
+            val paired = (_devices.value.firstOrNull { it.id == id } ?: fresh).copy(
+                name = reply.optString("tvName").ifBlank { peer.name },
+                key = key,
+                kind = kind,
+                pairedAt = now,
+                lastSeenAt = now,
+                host = if (kind.isTv) null else peer.host,
+                port = if (kind.isTv) 0 else reply.optInt("port", LinkWire.PhonePort),
+            )
+            change { list -> list.filterNot { it.id == id } + paired }
+            paired
         }.onSuccess { paired ->
             refresh()
             if (!paired.kind.isTv && paired.host != null) markLive(paired, paired.host, paired.port)
@@ -291,7 +290,11 @@ class PhoneLinkHost @Inject constructor(
         runCatching {
             val url = "${LinkWire.baseUrl(device.host, device.port)}$path"
             val response = if (body == null) LinkWire.get(url, credentials(device.key)) else LinkWire.postJson(url, credentials(device.key), body.toString())
-            response.use { if (it.isSuccessful) JSONObject(it.body.string().ifBlank { "{}" }) else null }
+            try {
+                if (response.isSuccessful) JSONObject(response.text().ifBlank { "{}" }) else null
+            } finally {
+                response.close()
+            }
         }.getOrNull()
     }
 
@@ -344,7 +347,7 @@ class PhoneLinkHost @Inject constructor(
         // a device still on the old protocol sends its key in a header; told to update rather than turned away as unpaired, which made it forget this phone
         if (request.header(LinkWire.OldKeyHeader) != null) return LinkResponse.status(426, "update mochy on that device")
         // the call must be signed by a paired device's key; the key itself is never in the call
-        val from = verifier.verify(request) { id -> _devices.value.firstOrNull { it.id == id }?.key }
+        val from = verifier.verify(request, keyOf = { id -> _devices.value.firstOrNull { it.id == id }?.key })
         val device = from?.let { id -> _devices.value.firstOrNull { it.id == id } }
             ?: return LinkResponse.status(401, "not paired")
         seen(device)

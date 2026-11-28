@@ -91,6 +91,7 @@ app/persistent-debug.keystore
 *.py
 !scripts/*.py
 !tools/stage/*.py
+!.github/scripts/*.py
 .env
 output-metadata.json
 vcs.xml
@@ -98,3 +99,6 @@ lint/
 
 # the release signing key, decoded from CI secrets; never committed
 app/keystore/
+
+# python caches from the release scripts
+__pycache__/

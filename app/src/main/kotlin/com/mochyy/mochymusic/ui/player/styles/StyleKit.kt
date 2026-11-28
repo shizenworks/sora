@@ -452,6 +452,7 @@ class StyleActions(
     val onQueue: (() -> Unit)? = null,
     // the rotate item; none in the selector's cards or on a tv
     val turn: StyleTurn? = null,
+    val onSleepTimer: (() -> Unit)? = null,
 )
 
 // whether the style on now is turned sideways and the switch for it, read as lambdas since the actions are built once

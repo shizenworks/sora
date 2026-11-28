@@ -2,7 +2,8 @@
 
 package com.mochyy.mochymusic.viewmodels
 
-import android.content.Context
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -13,21 +14,15 @@ import com.music.innertube.models.filterVideoSongs
 import com.mochyy.mochymusic.constants.HideExplicitKey
 import com.mochyy.mochymusic.constants.HideVideoSongsKey
 import com.mochyy.mochymusic.models.ItemsPage
-import com.mochyy.mochymusic.utils.dataStore
 import com.mochyy.mochymusic.utils.get
 import com.mochyy.mochymusic.utils.reportException
-import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
-@HiltViewModel
-class ArtistItemsViewModel
-@Inject
-constructor(
-    @ApplicationContext val context: Context,
+// Koin builds it (di/koin/OnlineKoin.kt); the artist shelves stay on the app's ItemsPage
+class ArtistItemsViewModel(
+    private val preferences: DataStore<Preferences>,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
     val artistId: String? = savedStateHandle.get<String>("artistId")
@@ -57,8 +52,8 @@ constructor(
                         params = params,
                     ),
                 ).onSuccess { artistItemsPage ->
-                    val hideExplicit = context.dataStore.get(HideExplicitKey, false)
-                    val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
+                    val hideExplicit = preferences.get(HideExplicitKey, false)
+                    val hideVideoSongs = preferences.get(HideVideoSongsKey, false)
                     title.value = artistItemsPage.title
                     itemsPage.value =
                         ItemsPage(
@@ -85,8 +80,8 @@ constructor(
             YouTube
                 .artistItemsContinuation(continuation)
                 .onSuccess { artistItemsContinuationPage ->
-                    val hideExplicit = context.dataStore.get(HideExplicitKey, false)
-                    val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
+                    val hideExplicit = preferences.get(HideExplicitKey, false)
+                    val hideVideoSongs = preferences.get(HideVideoSongsKey, false)
                     itemsPage.update {
                         ItemsPage(
                             items =

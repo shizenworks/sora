@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Strings for the shared (desktop and iOS) UI. The Android app keeps app/src/main/res for its own screens. -->
+<resources>
+    <string name="settings_appearance_category">Appearance</string>
+    <string name="settings_accent_color">Accent color</string>
+    <string name="settings_default_accent">Default gray</string>
+    <string name="settings_pure_black">Pure black</string>
+    <string name="settings_player_display">Player display</string>
+    <string name="settings_page_playback_desc">Queue, skips and background playback</string>
+    <string name="settings_page_ai_translator_desc">The service that translates your lyrics</string>
+    <string name="search_hint">Search songs</string>
+    <string name="search_failed">Couldn’t search. Check your connection and try again.</string>
+    <string name="playback_failed">Couldn’t play this song</string>
+    <string name="shell_coming_title">Moving in</string>
+    <string name="shell_coming_body">This screen is still on its way from the Android app.</string>
+    <string name="shell_credit">Built on Mochy Music by realidkroo</string>
+    <string name="lyrics_missing">Lyrics unavailable</string>
+    <string name="lyrics_source">Lyrics source</string>
+    <string name="lyrics_source_auto">Automatic</string>
+    <string name="lyrics_refresh">Refresh lyrics</string>
+    <string name="lyrics_refresh_failed">Couldn’t load new lyrics</string>
+    <string name="queue_empty">Your queue is empty</string>
+    <string name="queue_loading">Loading saved queue…</string>
+    <string name="queue_load_failed">Couldn’t load the saved queue. Queue changes won’t be saved.</string>
+    <string name="queue_write_failed">Couldn’t save the queue. Your current queue is still available until the app closes.</string>
+    <string name="skip_next">Skip to next song</string>
+    <string name="now_playing_settings">Player settings</string>
+    <string name="show_format_badge">Show codec badge</string>
+    <string name="show_format_sample_rate">Show sample rate</string>
+    <string name="settings_write_failed">Couldn’t save settings</string>
+    <string name="recently_played_empty">Songs you play will appear here.</string>
+    <string name="library_empty">Save a song from Now playing to find it here.</string>
+    <string name="library_filter_hint">Filter songs by title or artist</string>
+    <string name="library_filter_no_results">No songs match this filter</string>
+    <string name="library_clear_filter">Clear song filter</string>
+    <string name="library_save">Save to library</string>
+    <string name="library_remove">Remove from library</string>
+    <string name="library_update_failed">Couldn’t update your library</string>
+</resources>

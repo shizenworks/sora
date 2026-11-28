@@ -50,7 +50,8 @@ import com.mochyy.mochymusic.ui.component.Material3MenuItemData
 import com.mochyy.mochymusic.ui.component.SheetActionCard
 import com.mochyy.mochymusic.ui.component.SheetActionCardRow
 import kotlinx.coroutines.launch
-import java.time.LocalDateTime
+import com.mochyy.mochymusic.db.nowLocal
+import kotlinx.datetime.toKotlinLocalDateTime
 
 @Composable
 fun YouTubeSelectionSongMenu(
@@ -131,7 +132,7 @@ fun YouTubeSelectionSongMenu(
                         albumName = metadata.album?.title,
                         liked = metadata.liked,
                         totalPlayTime = 0,
-                        inLibrary = metadata.inLibrary,
+                        inLibrary = metadata.inLibrary?.toKotlinLocalDateTime(),
                         isLocal = false,
                         libraryAddToken = metadata.libraryAddToken,
                         libraryRemoveToken = metadata.libraryRemoveToken
@@ -292,7 +293,7 @@ fun YouTubeSelectionSongMenu(
                                 database.transaction {
                                     songSelection.forEach { song ->
                                         insert(song.toMediaMetadata())
-                                        inLibrary(song.id, LocalDateTime.now())
+                                        inLibrary(song.id, nowLocal())
                                     }
                                 }
                                 coroutineScope.launch {
@@ -404,7 +405,7 @@ fun YouTubeSelectionSongMenu(
                                             albumName = metadata.album?.title,
                                             liked = !metadata.liked,
                                             totalPlayTime = 0,
-                                            inLibrary = metadata.inLibrary,
+                                            inLibrary = metadata.inLibrary?.toKotlinLocalDateTime(),
                                             isLocal = false,
                                             libraryAddToken = metadata.libraryAddToken,
                                             libraryRemoveToken = metadata.libraryRemoveToken

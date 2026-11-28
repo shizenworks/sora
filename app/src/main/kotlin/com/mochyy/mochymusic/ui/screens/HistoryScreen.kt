@@ -24,7 +24,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import org.koin.compose.viewmodel.koinViewModel
 import androidx.navigation.NavController
 import com.mochyy.mochymusic.LocalPlayerAwareWindowInsets
 import com.mochyy.mochymusic.LocalPlayerConnection
@@ -65,7 +65,7 @@ internal fun historyDayHeading(day: LocalDate): String {
 @Composable
 fun HistoryScreen(
     navController: NavController,
-    historyViewModel: HistoryViewModel = hiltViewModel()
+    historyViewModel: HistoryViewModel = koinViewModel()
 ) {
     val loadedEvents by historyViewModel.events.collectAsState()
     val eventsMap = loadedEvents.orEmpty()

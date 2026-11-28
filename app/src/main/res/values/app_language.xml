@@ -29,6 +29,7 @@
     <string name="settings_lyrics_order_override_on">Using your order, %1$s first</string>
     <string name="settings_lyrics_order_override_detail">Mochy looks for lyrics in the song\'s own language, then picks the ones with the most features: duets first, then word-by-word timing, then backing vocals. Turn this on to use your own provider order instead. Lyrics in the wrong language or without timing still lose. Songs that already have lyrics keep them until you refetch.</string>
     <string name="lyrics_sort_title">Sort provider</string>
+    <string name="lyrics_sort_hint">Drag to set the order. Switch a source off to skip it when looking up lyrics.</string>
     <string name="lyrics_sort_done">done</string>
     <string name="settings_dont_skip_failure">Don\'t skip on failure</string>
     <string name="settings_dont_skip_failure_desc">Stay on a failed stream instead of skipping</string>

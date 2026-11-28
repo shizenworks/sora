@@ -10,6 +10,9 @@ import com.mochyy.mochymusic.importer.ImportedTrack
 import com.mochyy.mochymusic.importer.ParsedImport
 import com.mochyy.mochymusic.importer.PlaylistOrigin
 import com.mochyy.mochymusic.importer.ResyncRead
+import com.mochyy.mochymusic.importer.ResyncReads
+import com.mochyy.mochymusic.importer.ResyncTarget
+import com.mochyy.mochymusic.ui.screens.settings.importsync.AccountImportRunner
 import com.mochyy.mochymusic.utils.dataStore
 import com.mochyy.mochymusic.utils.get
 import com.music.innertube.YouTube
@@ -29,29 +32,6 @@ import kotlinx.coroutines.launch
 import org.json.JSONObject
 import timber.log.Timber
 
-sealed interface AccountImportState {
-    /** The service's sign-in page is showing. */
-    data object SigningIn : AccountImportState
-    /** YouTube Music uses the app's account, which isn't signed in yet. */
-    data object NeedsYouTubeSignIn : AccountImportState
-    data class Loading(val label: String) : AccountImportState
-    data class Choosing(
-        val accountName: String?,
-        val playlists: List<RemotePlaylist>,
-        val selected: Set<String>,
-        /** A Re-sync that couldn't find this playlist by name: the user picks which one it is. */
-        val pickingFor: String? = null,
-    ) : AccountImportState
-    data class Reading(val label: String, val done: Int, val total: Int) : AccountImportState
-    data class Failed(val message: String, val signedOut: Boolean) : AccountImportState
-}
-
-/** The imported playlist a Re-sync reads again: its id here, its name, and its id on the service if saved. */
-data class ResyncTarget(val playlistId: String, val name: String, val remoteId: String?)
-
-/** What a Re-sync read after sign-in, by playlist id here, and the names it couldn't find. */
-data class ResyncReads(val reads: Map<String, ResyncRead>, val missing: List<String>)
-
 /**
  * One sign-in → list → pick → read pass against one service, shared by the Import settings page
  * and onboarding. Runs on the [scope] it's given (a ViewModel's), so it stops with its screen.
@@ -60,7 +40,7 @@ class AccountImportSession(
     val service: AccountService,
     private val context: Context,
     private val scope: CoroutineScope,
-) {
+) : AccountImportRunner {
     private val connector: AccountConnector? = when (service) {
         AccountService.SPOTIFY -> SpotifyConnector
         AccountService.APPLE_MUSIC -> AppleMusicConnector
@@ -69,22 +49,22 @@ class AccountImportSession(
     }
 
     private val _state = MutableStateFlow<AccountImportState>(AccountImportState.Loading("Getting ready…"))
-    val state: StateFlow<AccountImportState> = _state.asStateFlow()
+    override val state: StateFlow<AccountImportState> = _state.asStateFlow()
 
     /** What the user picked, read and ready to import. */
     private val _ready = MutableStateFlow<ParsedImport?>(null)
-    val ready: StateFlow<ParsedImport?> = _ready.asStateFlow()
+    override val ready: StateFlow<ParsedImport?> = _ready.asStateFlow()
 
     /** A one-off note for the list page (e.g. some playlists couldn't be read). */
     private val _notice = MutableStateFlow<String?>(null)
-    val notice: StateFlow<String?> = _notice.asStateFlow()
+    override val notice: StateFlow<String?> = _notice.asStateFlow()
 
     /** Set for a Re-sync: after sign-in these playlists are read, instead of listing them all to pick from. */
     @Volatile private var resyncTargets: List<ResyncTarget> = emptyList()
 
     /** A Re-sync's playlists, read and ready to be matched. */
     private val _resyncReads = MutableStateFlow<ResyncReads?>(null)
-    val resyncReads: StateFlow<ResyncReads?> = _resyncReads.asStateFlow()
+    override val resyncReads: StateFlow<ResyncReads?> = _resyncReads.asStateFlow()
 
     private val credentials = CapturedCredentials()
     private val connectSignal = Channel<Unit>(Channel.CONFLATED)
@@ -95,12 +75,12 @@ class AccountImportSession(
     private var workJob: Job? = null
     private var lastChoosing: AccountImportState.Choosing? = null
 
-    fun start() {
+    override fun start() {
         if (service == AccountService.YOUTUBE_MUSIC) refreshYouTube() else startSignIn()
     }
 
     /** Signs in like an import does, then reads only [targets]. */
-    fun startResync(targets: List<ResyncTarget>) {
+    override fun startResync(targets: List<ResyncTarget>) {
         resyncTargets = targets
         start()
     }
@@ -137,14 +117,14 @@ class AccountImportSession(
     }
 
     /** From the web page's hook or request headers; may arrive on any thread. */
-    fun onHeader(name: String, value: String, url: String) {
+    override fun onHeader(name: String, value: String, url: String) {
         if (library != null) return
         credentials.addHeader(name, value, url)
         connectSignal.trySend(Unit)
     }
 
     /** Apple: tokens read straight from MusicKit in the page, as JSON {dev, user}. */
-    fun onApplePageProbe(raw: String?) {
+    override fun onApplePageProbe(raw: String?) {
         if (library != null || raw.isNullOrBlank() || raw == "null") return
         val json = runCatching { JSONObject(raw) }.getOrNull() ?: return
         json.optString("dev").takeIf { it.length > 20 && it != "null" }?.let {
@@ -157,7 +137,7 @@ class AccountImportSession(
     }
 
     /** Apple also keeps the user token as a cookie on music.apple.com. */
-    fun onCookies(cookieHeader: String?) {
+    override fun onCookies(cookieHeader: String?) {
         if (library != null || cookieHeader.isNullOrBlank()) return
         cookieHeader.split(';').forEach { pair ->
             if (pair.substringBefore('=').trim().equals("media-user-token", ignoreCase = true)) {
@@ -168,14 +148,14 @@ class AccountImportSession(
     }
 
     /** Forget this session (the caller clears the web cookies) and sign in again. */
-    fun signInAgain() {
+    override fun signInAgain() {
         workJob?.cancel()
         credentials.clear()
         library = null
         start()
     }
 
-    fun refreshYouTube() {
+    override fun refreshYouTube() {
         if (service != AccountService.YOUTUBE_MUSIC) return
         scope.launch(Dispatchers.IO) {
             if (!context.isUserLoggedIn()) {
@@ -195,7 +175,7 @@ class AccountImportSession(
 
     // ---- choosing ----
 
-    fun retry() {
+    override fun retry() {
         if (library != null) scope.launch(Dispatchers.IO) { afterConnect() } else signInAgain()
     }
 
@@ -225,11 +205,11 @@ class AccountImportSession(
         }
     }
 
-    fun toggle(id: String) = updateChoosing { it.copy(selected = if (id in it.selected) it.selected - id else it.selected + id) }
+    override fun toggle(id: String) = updateChoosing { it.copy(selected = if (id in it.selected) it.selected - id else it.selected + id) }
 
-    fun selectAll() = updateChoosing { it.copy(selected = it.playlists.map(RemotePlaylist::id).toSet()) }
+    override fun selectAll() = updateChoosing { it.copy(selected = it.playlists.map(RemotePlaylist::id).toSet()) }
 
-    fun selectNone() = updateChoosing { it.copy(selected = emptySet()) }
+    override fun selectNone() = updateChoosing { it.copy(selected = emptySet()) }
 
     private fun updateChoosing(change: (AccountImportState.Choosing) -> AccountImportState.Choosing) {
         _state.update { current ->
@@ -239,7 +219,7 @@ class AccountImportSession(
 
     // ---- reading what was picked ----
 
-    fun readSelected() {
+    override fun readSelected() {
         val choosing = _state.value as? AccountImportState.Choosing ?: return
         val lib = library ?: return
         val chosen = choosing.playlists.filter { it.id in choosing.selected }
@@ -361,7 +341,7 @@ class AccountImportSession(
     }
 
     /** The user picked which of the account's playlists a single Re-sync is for. */
-    fun pickForResync(id: String) {
+    override fun pickForResync(id: String) {
         val target = resyncTargets.singleOrNull() ?: return
         val choosing = _state.value as? AccountImportState.Choosing ?: return
         val lib = library ?: return
@@ -384,12 +364,12 @@ class AccountImportSession(
         }
     }
 
-    fun cancelReading() {
+    override fun cancelReading() {
         workJob?.cancel()
         lastChoosing?.let { _state.value = it }
     }
 
-    fun consumeReady() {
+    override fun consumeReady() {
         _ready.value = null
     }
 
@@ -399,7 +379,7 @@ class AccountImportSession(
         workJob?.cancel()
     }
 
-    fun clearNotice() {
+    override fun clearNotice() {
         _notice.value = null
     }
 

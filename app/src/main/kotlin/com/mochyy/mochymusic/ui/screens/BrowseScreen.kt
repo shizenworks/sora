@@ -21,7 +21,7 @@ package com.mochyy.mochymusic.ui.screens
  import androidx.compose.ui.Modifier
  import androidx.compose.ui.res.painterResource
  import androidx.compose.ui.unit.dp
- import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import org.koin.compose.viewmodel.koinViewModel
  import androidx.navigation.NavController
  import com.music.innertube.models.AlbumItem
  import com.music.innertube.models.ArtistItem
@@ -51,7 +51,7 @@ package com.mochyy.mochymusic.ui.screens
     navController: NavController,
     scrollBehavior: TopAppBarScrollBehavior,
     browseId: String?,
-    viewModel: BrowseViewModel = hiltViewModel(),
+    viewModel: BrowseViewModel = koinViewModel(),
 ) {
      val menuState = LocalMenuState.current
      val playerConnection = LocalPlayerConnection.current ?: return

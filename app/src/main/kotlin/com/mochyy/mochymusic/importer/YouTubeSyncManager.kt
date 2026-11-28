@@ -30,6 +30,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.datetime.toJavaLocalDateTime
+import kotlinx.datetime.toKotlinLocalDateTime
 import timber.log.Timber
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -39,13 +41,6 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
-
-data class YtSyncState(
-    val running: Boolean = false,
-    val label: String = "",
-    val message: String? = null,
-    val canUndo: Boolean = false,
-)
 
 /** the manual youtube actions on the sync page; automatic library sync stays in SyncUtils */
 @Singleton

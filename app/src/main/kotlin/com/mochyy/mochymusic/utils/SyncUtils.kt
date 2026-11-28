@@ -4,6 +4,7 @@ package com.mochyy.mochymusic.utils
 
 import android.content.Context
 import androidx.datastore.preferences.core.edit
+import com.mochyy.mochymusic.db.entities.toggleLibrary
 import com.music.innertube.YouTube
 import com.music.innertube.models.AlbumItem
 import com.music.innertube.models.ArtistItem
@@ -67,6 +68,9 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
+import com.mochyy.mochymusic.db.nowLocal
+import kotlinx.datetime.toJavaLocalDateTime
+import kotlinx.datetime.toKotlinLocalDateTime
 
 sealed class SyncOperation {
     data object FullSync : SyncOperation()
@@ -79,7 +83,7 @@ sealed class SyncOperation {
     data object SavedPlaylists : SyncOperation()
     data object AutoSyncPlaylists : SyncOperation()
     data class SinglePlaylist(val browseId: String, val playlistId: String) : SyncOperation()
-    data class LikeSong(val song: SongEntity) : SyncOperation()
+    data class LikeSong(val song: SongEntity, val accountId: String?) : SyncOperation()
     data class History(val maxRequests: Int = 8) : SyncOperation()
     data object CleanupDuplicates : SyncOperation()
     data object ClearAllSynced : SyncOperation()
@@ -150,7 +154,8 @@ class SyncUtils @Inject constructor(
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
-                    Timber.e(e, "Error processing sync operation: $operation")
+                    // the type only: an operation holds songs and the account it was queued for
+                    Timber.e(e, "Error processing sync operation: ${operation::class.simpleName}")
                 }
             }
         }
@@ -168,13 +173,16 @@ class SyncUtils @Inject constructor(
             is SyncOperation.SavedPlaylists -> executeSyncSavedPlaylists()
             is SyncOperation.AutoSyncPlaylists -> executeSyncAutoSyncPlaylists()
             is SyncOperation.SinglePlaylist -> executeSyncPlaylist(operation.browseId, operation.playlistId)
-            is SyncOperation.LikeSong -> executeLikeSong(operation.song)
+            is SyncOperation.LikeSong -> executeLikeSong(operation.song, operation.accountId)
             is SyncOperation.History -> runCatching { pullYouTubeHistory(operation.maxRequests) }
                 .onFailure { Timber.e(it, "Failed to sync YouTube history") }
             is SyncOperation.CleanupDuplicates -> executeCleanupDuplicatePlaylists()
             is SyncOperation.ClearAllSynced -> executeClearAllSyncedContent()
         }
     }
+
+    // the signed-in account as SavedAccount.opaqueId (never the raw id, which can be the cookie), null when nobody is signed in
+    private suspend fun activeAccountId(): String? = SavedAccount.fromActive(context.dataStore.data.first())?.opaqueId
 
     private suspend fun isLoggedIn(): Boolean {
         return try {
@@ -267,8 +275,10 @@ class SyncUtils @Inject constructor(
     }
 
     fun likeSong(s: SongEntity) {
+        // tagged with the account signed in at the tap (read now, not once the launch runs), so a switch before it runs drops it
+        val owner = SavedAccount.fromActive(PreferencesCache.current(context.dataStore))?.opaqueId
         syncScope.launch {
-            syncChannel.send(SyncOperation.LikeSong(s))
+            syncChannel.send(SyncOperation.LikeSong(s, owner))
         }
     }
 
@@ -449,9 +459,9 @@ class SyncUtils @Inject constructor(
 
     /** Marks a song as one YouTube brought in, so the Library lists it under YouTube Music. */
     private fun MusicDatabase.tagFromYouTube(songId: String, now: LocalDateTime) =
-        insert(ImportedSong(songId = songId, source = ImportSource.YOUTUBE_MUSIC.key, importedAt = now))
+        insert(ImportedSong(songId = songId, source = ImportSource.YOUTUBE_MUSIC.key, importedAt = now.toKotlinLocalDateTime()))
 
-    private suspend fun executeLikeSong(s: SongEntity) = withContext(Dispatchers.IO) {
+    private suspend fun executeLikeSong(s: SongEntity, owner: String?) = withContext(Dispatchers.IO) {
         // before the YouTube check: a love on Last.fm or Libre.fm doesn't need a YouTube account
         val artist = database.song(s.id).firstOrNull()?.artists?.firstOrNull()?.name
         if (artist != null) scrobbler.love(artist, s.title, s.liked)
@@ -461,6 +471,10 @@ class SyncUtils @Inject constructor(
 
         if (!isLoggedIn()) {
             Timber.w("Skipping likeSong - user not logged in")
+            return@withContext
+        }
+        if (!belongsToActiveAccount(owner, activeAccountId())) {
+            Timber.w("Dropping queued like: it was queued for another account")
             return@withContext
         }
 
@@ -494,10 +508,11 @@ class SyncUtils @Inject constructor(
 
         updateState { copy(likedSongs = SyncStatus.Syncing, currentOperation = "Syncing liked songs") }
 
-        YouTubeLikesMemory.exclusive { pullLikedSongs() }
+        val owner = activeAccountId()
+        YouTubeLikesMemory.exclusive { pullLikedSongs(owner) }
     }
 
-    private suspend fun pullLikedSongs() {
+    private suspend fun pullLikedSongs(owner: String?) {
         withRetryResult {
             YouTube.playlist("LM").completed()
         }.onSuccess { page ->
@@ -526,6 +541,8 @@ class SyncUtils @Inject constructor(
                                     keptLikes += id
                                     donePending += id
                                 }
+                                // the session may have moved to another account since this sync started; stays pending
+                                !belongsToActiveAccount(owner, activeAccountId()) -> keptLikes += id
                                 else -> {
                                     if (YouTube.likeVideo(id, true).isSuccess) {
                                         pushedLikes += id
@@ -543,6 +560,7 @@ class SyncUtils @Inject constructor(
                                     keptUnlikes += id
                                     donePending += id
                                 }
+                                !belongsToActiveAccount(owner, activeAccountId()) -> keptUnlikes += id
                                 else -> {
                                     if (YouTube.likeVideo(id, false).isSuccess) {
                                         pushedUnlikes += id
@@ -583,7 +601,7 @@ class SyncUtils @Inject constructor(
                 // only rewrite likedDate timestamps when order actually changed, avoiding hundreds of no-op writes that trigger room invalidation storms
                 val localOrder = localSongs
                     .filter { it.id in remoteIds }
-                    .sortedByDescending { it.song.likedDate ?: LocalDateTime.MIN }
+                    .sortedByDescending { it.song.likedDate?.toJavaLocalDateTime() ?: LocalDateTime.MIN }
                     .map { it.id }
                 val remoteOrder = remoteSongs.map { it.id }.filter { it in existingById && existingById[it]?.song?.liked == true }
                 val orderChanged = localOrder != remoteOrder
@@ -604,7 +622,7 @@ class SyncUtils @Inject constructor(
                             try {
                                 val dbSong = existingById[song.id]
                                 val isVideoSong = song.isVideoSong
-                                val timestamp = now.minusSeconds(index.toLong())
+                                val timestamp = now.minusSeconds(index.toLong()).toKotlinLocalDateTime()
                                 if (tagAll || dbSong == null || !dbSong.song.liked) tagFromYouTube(song.id, now)
                                 if (dbSong == null) {
                                     insert(song.toMediaMetadata()) {
@@ -997,7 +1015,7 @@ class SyncUtils @Inject constructor(
                 }
                 if (pendingArtists.isNotEmpty()) {
                     database.transaction {
-                        val now = LocalDateTime.now()
+                        val now = nowLocal()
                         pendingArtists.forEach { (artist, pair) ->
                             val (existing, channelId) = pair
                             if (existing == null) {
@@ -1092,7 +1110,7 @@ class SyncUtils @Inject constructor(
                                 browseId = playlist.id,
                                 thumbnailUrl = playlist.thumbnail,
                                 isEditable = playlist.isEditable,
-                                bookmarkedAt = LocalDateTime.now(),
+                                bookmarkedAt = nowLocal(),
                                 remoteSongCount = playlist.songCountText?.let {
                                     Regex("""\d+""").find(it)?.value?.toIntOrNull()
                                 },
@@ -1113,7 +1131,7 @@ class SyncUtils @Inject constructor(
                                     playlistId = playlistEntity.id,
                                     source = ImportSource.YOUTUBE_MUSIC.key,
                                     sessionId = null,
-                                    importedAt = LocalDateTime.now(),
+                                    importedAt = nowLocal(),
                                 ),
                             )
                         }
@@ -1350,7 +1368,7 @@ class SyncUtils @Inject constructor(
             database.withTransaction {
                 chunk.forEach { (song, timestamp, playTimeMs) ->
                     insert(song.toMediaMetadata())
-                    insert(Event(songId = song.id, timestamp = timestamp, playTime = playTimeMs))
+                    insert(Event(songId = song.id, timestamp = timestamp.toKotlinLocalDateTime(), playTime = playTimeMs))
                     if (playTimeMs > 0) incrementTotalPlayTime(song.id, playTimeMs)
                 }
             }
@@ -1509,6 +1527,8 @@ class SyncUtils @Inject constructor(
     }
 
     fun cancelAllSyncs() {
+        // drop what is queued too, so nothing from the old account runs after the session swap
+        while (syncChannel.tryReceive().isSuccess) { }
         processingJob?.cancel()
         startProcessingQueue()
         updateState { SyncState() }

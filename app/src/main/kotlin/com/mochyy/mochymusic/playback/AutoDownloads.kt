@@ -15,7 +15,7 @@ import com.mochyy.mochymusic.utils.rememberPreference
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
-import java.time.LocalDateTime
+import com.mochyy.mochymusic.db.nowLocal
 
 // playlists, and liked songs, whose new songs download by themselves; each keeps where it started counting, so the songs already there aren't fetched
 object AutoDownloads {
@@ -29,7 +29,7 @@ object AutoDownloads {
         val mark = if (!enabled) null else withContext(Dispatchers.IO) {
             if (playlistId == LikedId) {
                 // likedDate is stored through this converter, so the mark has to go through it too or it's off by the time zone
-                Converters().dateToTimestamp(LocalDateTime.now()) ?: 0L
+                Converters().dateToTimestamp(nowLocal()) ?: 0L
             } else {
                 database.lastPlaylistEntryId(playlistId) ?: 0L
             }

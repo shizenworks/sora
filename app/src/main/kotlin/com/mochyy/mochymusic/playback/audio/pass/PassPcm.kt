@@ -32,7 +32,7 @@ internal object PassPcm {
         }
     }
 
-    /** packs every whole frame of input into output; false when a float sample wasn't a whole step of the song's depth, so it wasn't lossless to begin with */
+    /** packs every whole frame of input into output; false when a float sample wasn't a whole step of the song's depth (so it wasn't lossless to begin with) or had to be replaced */
     fun convert(
         input: ByteBuffer,
         encoding: Int,
@@ -64,6 +64,8 @@ internal object PassPcm {
                 else -> {
                     val value = input.float.toDouble()
                     if (!value.isFinite()) {
+                        // silence keeps the dac safe, but the output is no longer the song's own data
+                        exact = false
                         0
                     } else {
                         val step = (value * floatScale).roundToLong().coerceIn(-floatScale.toLong(), floatScale.toLong() - 1)

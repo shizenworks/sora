@@ -44,7 +44,7 @@ internal class CarRecentTab(app: CarApp) : CarDataTab<CarRecentTab.Data>(app, "r
         }
         val title = app.string(R.string.car_tab_recent)
         val rows = data.songs.mapIndexed { index, song ->
-            songRow(song, data.songCovers[index]) { app.play(app.catalog.listFrom(title, data.songs, index)) }
+            songRow(song, data.songCovers[index]) { app.play(app.catalog.listFrom(title, data.songs, index), startIsChoice = true) }
         }
         template.addSection(
             RowSection.Builder()

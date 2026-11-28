@@ -93,7 +93,7 @@ object LocalArtwork {
                     database.query {
                         update(song.copy(thumbnailUrl = newUrl))
                         // an album that lost its cover in a clear gets it from its first song back
-                        if (newUrl != null && song.albumId != null) refreshLocalAlbum(song.albumId, newUrl, null)
+                        if (newUrl != null && song.albumId != null) refreshLocalAlbum(song.albumId!!, newUrl, null)
                     }
                     if (newUrl != null) fixed++
                 }

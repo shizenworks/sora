@@ -21,7 +21,6 @@ import com.mochyy.mochymusic.ui.player.ipod.IpodPage
 import com.mochyy.mochymusic.ui.player.ipod.IpodPick
 import com.mochyy.mochymusic.ui.player.ipod.IpodRow
 import com.mochyy.mochymusic.ui.utils.resize
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -30,15 +29,14 @@ import kotlinx.coroutines.withTimeoutOrNull
 import java.text.Collator
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
-import javax.inject.Inject
 
 // one album as cover flow shows it
 @Immutable
 class IpodAlbum(val id: String, val title: String, val artist: String, val cover: String?)
 
 // the library as the ipod player's menus see it; warmed in the background so opening a menu doesn't wait on the database
-@HiltViewModel
-class IpodLibraryViewModel @Inject constructor(
+// Koin builds it (di/koin/PlayerTvKoin.kt): the iPod player is a player piece, still in :app
+class IpodLibraryViewModel(
     private val database: MusicDatabase,
 ) : ViewModel() {
     private val cache = ConcurrentHashMap<IpodPage, IpodList>().apply {

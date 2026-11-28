@@ -32,7 +32,6 @@ import com.music.innertube.YouTube
 import com.music.innertube.models.SongItem
 import org.json.JSONObject
 import com.mochyy.mochymusic.playback.custom.WidevineDrm
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -40,12 +39,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import javax.inject.Inject
 
 /** the modules settings: each module's account, switch, choices and settings, its test, ordering, and adding new ones */
-@HiltViewModel
-class ModulesViewModel @Inject constructor(
-    @dagger.hilt.android.qualifiers.ApplicationContext private val context: android.content.Context,
+class ModulesViewModel(
+    private val context: android.content.Context,
     private val modules: SourceModules,
     private val registry: ModuleRegistry,
     private val moduleCatalog: ModuleCatalog,

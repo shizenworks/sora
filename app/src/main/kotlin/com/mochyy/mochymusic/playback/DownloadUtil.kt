@@ -75,10 +75,10 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
-import java.time.LocalDateTime
 import java.util.concurrent.Executor
 import javax.inject.Inject
 import javax.inject.Singleton
+import com.mochyy.mochymusic.db.nowLocal
 
 @Singleton
 class DownloadUtil
@@ -213,7 +213,7 @@ constructor(
                     ),
                 )
 
-                val now = LocalDateTime.now()
+                val now = nowLocal()
                 val existing = getSongByIdBlocking(mediaId)?.song
 
                 val updatedSong = if (existing != null) {
@@ -287,7 +287,7 @@ constructor(
                         scope.launch {
                             when (download.state) {
                                 Download.STATE_COMPLETED -> {
-                                    database.updateDownloadedInfo(download.request.id, true, LocalDateTime.now())
+                                    database.updateDownloadedInfo(download.request.id, true, nowLocal())
                                     recordDownloadedLength(download)
                                     moduleDownloads.remove(download.request.id)
                                     failedProviders.remove(download.request.id)
@@ -464,7 +464,7 @@ constructor(
                     playbackUrl = null,
                 ),
             )
-            if (song != null && song.song.dateDownload == null) upsert(song.song.copy(dateDownload = LocalDateTime.now()))
+            if (song != null && song.song.dateDownload == null) upsert(song.song.copy(dateDownload = nowLocal()))
         }
         return ModuleDownload(module.info.id, stream.url, stream.headers).also { moduleDownloads[mediaId] = it }
     }

@@ -32,7 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import org.koin.compose.viewmodel.koinViewModel
 import androidx.navigation.NavController
 import com.mochyy.mochymusic.ui.menu.rememberResyncAll
 import com.mochyy.mochymusic.LocalPlayerAwareWindowInsets
@@ -72,8 +72,8 @@ fun LibraryHomeScreen(
     modifier: Modifier = Modifier,
     pureBlack: Boolean = false,
 ) {
-    val viewModel: LibraryHomeViewModel = hiltViewModel()
-    val importViewModel: LibraryImportViewModel = hiltViewModel()
+    val viewModel: LibraryHomeViewModel = koinViewModel()
+    val importViewModel: LibraryImportViewModel = koinViewModel()
     val playerConnection = LocalPlayerConnection.current
     val menuState = LocalMenuState.current
 
@@ -101,12 +101,12 @@ fun LibraryHomeScreen(
 
     // the History and Genres tabs only load once they're opened: one reads every play, the other every local song's genre
     val historyEvents = if (tab == LibraryTab.History) {
-        hiltViewModel<HistoryViewModel>().events.collectAsState().value
+        koinViewModel<HistoryViewModel>().events.collectAsState().value
     } else {
         null
     }
     val genres = if (tab == LibraryTab.Genres) {
-        hiltViewModel<LocalGenresViewModel>().genres.collectAsState().value
+        koinViewModel<LocalGenresViewModel>().genres.collectAsState().value
     } else {
         null
     }

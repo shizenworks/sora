@@ -35,4 +35,5 @@
     <string name="aq_status_on">On</string>
     <string name="aq_status_off_tap">Off, tap to turn on</string>
     <string name="aq_status_not_installed">Not installed</string>
+    <string name="settings_index_youtube_source">YouTube Music as a source</string>
 </resources>

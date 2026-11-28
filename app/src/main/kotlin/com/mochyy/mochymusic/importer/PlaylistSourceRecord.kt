@@ -6,8 +6,9 @@ import com.mochyy.mochymusic.db.MusicDatabase
 import com.mochyy.mochymusic.db.entities.ImportedPlaylist
 import com.mochyy.mochymusic.db.entities.ImportedPlaylistTrack
 import com.mochyy.mochymusic.db.entities.PlaylistEntity
+import com.mochyy.mochymusic.db.nowLocal
 import kotlinx.coroutines.flow.first
-import java.time.LocalDateTime
+import kotlinx.datetime.LocalDateTime
 
 /** what mochy remembers about an imported playlist on its service: where it lives and every song it had last time, so reading it again only brings in what is new */
 internal class PlaylistSourceRecord(private val database: MusicDatabase) {
@@ -51,7 +52,7 @@ internal class PlaylistSourceRecord(private val database: MusicDatabase) {
         database.withTransaction {
             val author = origin?.author
             updateImportedPlaylistOrigin(
-                playlistId, origin?.remoteId, origin?.remoteUrl, LocalDateTime.now(),
+                playlistId, origin?.remoteId, origin?.remoteUrl, nowLocal(),
                 author?.name, author?.avatarUrl, author?.profileUrl,
             )
             insertImportedPlaylistTracks(tracks.map { ImportedPlaylistTrack(playlistId, it.trackKey()) }.distinct())
@@ -60,7 +61,7 @@ internal class PlaylistSourceRecord(private val database: MusicDatabase) {
 
     /** a youtube playlist saved as a copy from its own page, no import owned it so this makes it one re-sync can read again by youTubeId */
     suspend fun rememberYouTubeCopy(playlistId: String, youTubeId: String, songIds: List<String>) {
-        val now = LocalDateTime.now()
+        val now = nowLocal()
         database.withTransaction {
             insert(
                 ImportedPlaylist(

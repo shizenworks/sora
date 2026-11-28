@@ -3,17 +3,12 @@
 package com.mochyy.mochymusic.link
 
 import android.content.Context
-import androidx.compose.runtime.Immutable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import org.json.JSONObject
 import java.security.MessageDigest
 import java.security.SecureRandom
-
-// what a pairing screen shows: the code to type on the other device, the name it will see, and the address for a wi-fi that hides devices
-@Immutable
-data class PairingCode(val code: String, val deviceName: String, val address: String? = null)
 
 // while a pairing screen is open, the device waits on the wi-fi for someone who types the code it shows, and the caller answers the one who got it right
 internal class LinkPairingDoor(

@@ -72,7 +72,7 @@ fun ScrobbleSignInContent(
         problem = null
         scope.launch {
             try {
-                onSignedIn(viewModel.signIn(site, username, password))
+                onSignedIn(viewModel.signIn(site.name, username, password))
             } catch (e: CancellationException) {
                 throw e
             } catch (e: AudioscrobblerException) {

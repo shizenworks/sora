@@ -124,7 +124,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.ProcessLifecycleOwner
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import org.koin.compose.viewmodel.koinViewModel
 import androidx.navigation.NavController
 import com.mochyy.mochymusic.BuildConfig
 import com.mochyy.mochymusic.LocalAppContentObscured
@@ -258,7 +258,7 @@ fun ProfileScreen(navController: NavController) {
     val profile = rememberProfileMorphState()
     val cardPress = remember { MutableInteractionSource() }
     val cardPressed by cardPress.collectIsPressedAsState()
-    val profileViewModel: UserProfileViewModel = hiltViewModel()
+    val profileViewModel: UserProfileViewModel = koinViewModel()
 
     var liveAccountName by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(innerTubeCookie) {

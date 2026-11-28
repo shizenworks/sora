@@ -157,7 +157,7 @@ fun VideoPickerSheet(songId: String, title: String, artist: String, onDismiss: (
         val edit = SongEdits.of(songId)
         val start = when {
             edit?.noVideo == true -> VideoChoice.None
-            edit?.videoId != null -> VideoChoice.Picked(edit.videoId)
+            edit?.videoId != null -> VideoChoice.Picked(edit.videoId!!)
             else -> VideoChoice.Auto
         }
         val state = VideoPickState("$title $artist".trim(), start)

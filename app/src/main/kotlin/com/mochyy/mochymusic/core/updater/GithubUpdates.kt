@@ -12,16 +12,11 @@ import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
 
-const val GithubOwner = "realidkroo"
-const val GithubRepo = "Mochy-Music"
 
 const val GithubProfileUrl = "https://github.com/$GithubOwner"
 const val GithubRepoUrl = "https://github.com/$GithubOwner/$GithubRepo"
-const val InstagramUrl = "https://www.instagram.com/furfurrfoxx/"
 // Threads names follow the Instagram one
-const val ThreadsUrl = "https://www.threads.net/@furfurrfoxx"
 // dev spaces hides the discord row while this is blank
-const val DiscordUrl = "https://discord.gg/NTmqVphbRY"
 
 private const val ReleasesApi =
     "https://api.github.com/repos/$GithubOwner/$GithubRepo/releases?per_page=20"

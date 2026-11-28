@@ -161,7 +161,10 @@
     <string name="swipe_song_to_add">Swipe song to the left to add it to the queue or to the right to play it next</string>
     <string name="swipe_song_to_remove">Swipe song to remove it from the playlist</string>
     <string name="lyrics_click_change">Change lyrics on click</string>
+    <string name="lyrics_click_change_desc">Tap a lyric line to jump to it</string>
     <string name="lyrics_auto_scroll">Auto scroll lyrics</string>
+    <string name="lyrics_auto_scroll_desc">Keep the list on the line that is playing</string>
+    <string name="lyrics_back_to_current">Back to current line</string>
     <string name="lyrics_glow_effect">Enable glowing lyrics effect</string>
     <string name="lyrics_glow_effect_desc">Add glowing animation and bounce effect to active lyrics</string>
     <string name="enable_better_lyrics">Enable Better Lyrics</string>
@@ -751,9 +754,12 @@
     <string name="crash_share_logs">Share Logs</string>
     <string name="copy_logs">Copy Logs</string>
     <string name="crash_share_title">Share crash report</string>
+    <string name="crash_share_row_desc">Attach the newest saved crash report to a message. Nothing leaves your phone until you choose where to send it.</string>
     <string name="crash_report_subject">mochy Crash Report</string>
     <string name="crash_close">Close</string>
     <string name="crash_no_log">No crash log available</string>
+    <string name="crash_preview_title">Check before sharing</string>
+    <string name="crash_preview_desc">Account names, tokens, keys, links and file locations are replaced with [redacted]. This is exactly what will be shared.</string>
 
     <!-- Theme Palette Names -->
     <string name="palette_dynamic">Dynamic</string>
@@ -1233,6 +1239,7 @@
 
     <!-- crossmix: the dj-style transition and how the listener can shape it -->
     <string name="crossmix_desc">DJ-style: reads each song\'s tempo, beats, key, energy and where its voice is, then picks the transition that fits and locks the two on the beat, so two voices never sing over each other</string>
+    <string name="crossmix_battery_note">Crossmix listens to every song before it mixes it: it decodes and analyses the song playing and the next one in the background. That uses more battery and processor time than a plain crossfade. Each song is only analysed once and remembered after that. If you just want songs to fade into each other, pick Auto Crossfade.</string>
     <string name="crossmix_style_title">Transition</string>
     <string name="crossmix_style_desc">Let Mochy pick the one that fits each pair, or hear the same one every time</string>
     <string name="crossmix_style_auto">Let Mochy choose</string>

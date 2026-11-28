@@ -70,7 +70,6 @@ import com.mochyy.mochymusic.ui.component.rememberSheetGrabberBend
 import com.mochyy.mochymusic.ui.component.underSheetHandle
 
 val MenuSurface = Color(0xFF0B0B0C)
-val MenuRowSurface = Color(0xFF161619)
 
 internal val MenuEasing = CubicBezierEasing(0.57f, 0.53f, 0f, 1f)
 

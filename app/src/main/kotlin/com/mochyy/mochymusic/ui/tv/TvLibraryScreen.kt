@@ -51,7 +51,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.navigation.compose.hiltViewModel
+import org.koin.compose.viewmodel.koinViewModel
 import com.mochyy.mochymusic.R
 import com.mochyy.mochymusic.link.PhoneFiles
 import com.mochyy.mochymusic.viewmodels.LibraryHomeViewModel
@@ -72,7 +72,7 @@ private data class TvShelfCard(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-internal fun TvLibraryScreen(viewModel: LibraryHomeViewModel = hiltViewModel()) {
+internal fun TvLibraryScreen(viewModel: LibraryHomeViewModel = koinViewModel()) {
     val actions = LocalTvActions.current
     var tab by rememberSaveable { mutableStateOf(TvLibraryTab.All) }
     val liked by viewModel.likedSongs.collectAsState()

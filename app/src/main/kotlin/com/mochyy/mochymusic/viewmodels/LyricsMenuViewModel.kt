@@ -15,7 +15,6 @@ import com.mochyy.mochymusic.lyrics.LyricsResult
 import com.mochyy.mochymusic.lyrics.LyricsWithProvider
 import com.mochyy.mochymusic.models.MediaMetadata
 import com.mochyy.mochymusic.utils.NetworkConnectivityObserver
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,12 +22,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
+import kotlinx.coroutines.withContext
 
-@HiltViewModel
-class LyricsMenuViewModel
-@Inject
-constructor(
+// Koin builds it (di/koin/PlayerTvKoin.kt): the player side still lives in :app
+class LyricsMenuViewModel(
     private val lyricsHelper: LyricsHelper,
     val database: MusicDatabase,
     private val networkConnectivity: NetworkConnectivityObserver,
@@ -123,8 +120,8 @@ constructor(
      * say which ones have lyrics before the user taps one. Results are kept for the song, so a
      * pick applies the lyrics already fetched instead of searching again.
      */
-    fun checkSources(mediaMetadata: MediaMetadata) {
-        if (sourcesFor == mediaMetadata.id && _sources.value.isNotEmpty()) return
+    fun checkSources(mediaMetadata: MediaMetadata, refresh: Boolean = false) {
+        if (!refresh && sourcesFor == mediaMetadata.id && _sources.value.isNotEmpty()) return
         sourcesJob?.cancel()
         sourcesFor = mediaMetadata.id
         _sources.value = LyricsProviderRegistry.providerNames.associateWith { SourceState.Checking }
@@ -144,7 +141,9 @@ constructor(
                             ?.let { SourceState.Available(it) }
                             ?: SourceState.Unavailable
                     }
-                    _sources.update { it + (provider.name to state) }
+                    withContext(Dispatchers.Main.immediate) {
+                        _sources.update { it + (provider.name to state) }
+                    }
                 }
             }
         }

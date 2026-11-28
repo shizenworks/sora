@@ -7,7 +7,9 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -17,9 +19,18 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.animation.core.animate
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
@@ -32,6 +43,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -49,6 +62,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.size
 import com.mochyy.mochymusic.LocalGlassState
+import com.mochyy.mochymusic.constants.ShowNavTabLabelsKey
+import com.mochyy.mochymusic.utils.rememberPreference
 
 @Immutable
 private data class NavItemState(
@@ -201,6 +216,61 @@ class TabOwnership(private val navigationItems: List<Screens>) {
         return tabRoutes.indexOf(owner)
     }
 }
+
+/**
+ * how far the nav bar has slid away: 0 shown, 1 gone. only read inside graphicsLayer lambdas, so a
+ * scroll moves the bar without recomposing the screen for every pixel.
+ */
+@Stable
+class NavBarHide {
+    var progress by mutableFloatStateOf(0f)
+}
+
+/**
+ * slides the bar away while a list scrolls down and brings it back when it scrolls up. it only
+ * watches the scroll and never takes any of it, so the list still scrolls exactly as before.
+ */
+@Composable
+fun rememberNavBarHideConnection(state: NavBarHide, barHeightPx: Float, enabled: Boolean): NestedScrollConnection =
+    remember(state, barHeightPx, enabled) {
+        object : NestedScrollConnection {
+            override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
+                // scrolling down moves the content up (consumed.y < 0), which hides the bar
+                if (enabled && barHeightPx > 0f) {
+                    state.progress = (state.progress - consumed.y / barHeightPx).coerceIn(0f, 1f)
+                }
+                return Offset.Zero
+            }
+
+            // a fling settles the bar: past halfway it finishes hiding, otherwise it comes back
+            override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
+                if (enabled) {
+                    val target = if (state.progress > 0.5f) 1f else 0f
+                    animate(state.progress, target) { value, _ -> state.progress = value }
+                }
+                return Velocity.Zero
+            }
+        }
+    }
+
+/** one tab in the bar's settings: where it sits and whether it is shown */
+data class NavTabSlot(val screen: Screens, val shown: Boolean)
+
+/**
+ * the tabs in the saved order, shown or hidden. a tab missing from the save (a new one, or a blank
+ * save) comes last and is shown. Settings is always in the bar so the app can never be left without it.
+ */
+// the stored format lives in shared (NavBarSettingsScreen.kt), so the bar and its settings page agree
+fun navTabSlots(saved: String): List<NavTabSlot> =
+    com.mochyy.mochymusic.ui.screens.settings.decodeNavTabOrder(saved, Screens.MainScreens) { it.route }
+        .map { (screen, shown) -> NavTabSlot(screen, shown) }
+
+fun encodeNavTabs(slots: List<NavTabSlot>): String =
+    com.mochyy.mochymusic.ui.screens.settings.encodeNavTabOrder(slots.map { it.screen to it.shown }) { it.route }
+
+/** the tabs the bar draws, in order */
+fun navigationTabs(saved: String): List<Screens> =
+    navTabSlots(saved).filter { it.shown || it.screen == Screens.Settings }.map { it.screen }
 
 /** The bar itself, a stadium the mini player's 64dp matches. */
 internal val NavBarHeight = 64.dp
@@ -363,6 +433,7 @@ internal fun RowScope.NavTab(
     // the gap under the glyph when its name shows beneath it (Neiro's Show labels); null: icon only
     label: androidx.compose.ui.unit.Dp? = null,
 ) {
+    val (showNames) = rememberPreference(ShowNavTabLabelsKey, defaultValue = false)
     val viewConfiguration = LocalViewConfiguration.current
     val interactionSource = remember { MutableInteractionSource() }
     val lastTap = remember { longArrayOf(0L) }
@@ -394,15 +465,19 @@ internal fun RowScope.NavTab(
         contentAlignment = Alignment.Center
     ) {
         androidx.compose.foundation.layout.Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            // the name is read out from the icon unless it already shows as text
+            val title = stringResource(screen.titleId)
+            val named = label != null || showNames
+            val iconDescription = title.takeUnless { named }
             if (screen == Screens.Library) {
-                LibraryDownloadIcon { TabIcons(screen, unlitIcon, litIcon, iconSize) { lit.value } }
+                LibraryDownloadIcon { TabIcons(iconDescription, unlitIcon, litIcon, iconSize) { lit.value } }
             } else {
-                TabIcons(screen, unlitIcon, litIcon, iconSize) { lit.value }
+                TabIcons(iconDescription, unlitIcon, litIcon, iconSize) { lit.value }
             }
-            if (label != null) {
-                androidx.compose.foundation.layout.Spacer(Modifier.height(label))
+            if (named) {
+                androidx.compose.foundation.layout.Spacer(Modifier.height(label ?: 3.dp))
                 androidx.compose.material3.Text(
-                    text = stringResource(screen.titleId),
+                    text = title,
                     style = androidx.compose.material3.MaterialTheme.typography.labelSmall,
                     color = androidx.compose.material3.LocalContentColor.current.copy(alpha = UnlitIconAlpha + (1f - UnlitIconAlpha) * lit.value),
                     maxLines = 1,
@@ -415,7 +490,7 @@ internal fun RowScope.NavTab(
 /** a tab's two icons, the filled one fading in over the outline as the tab lights up */
 @Composable
 private fun TabIcons(
-    screen: Screens,
+    description: String?,
     unlitIcon: androidx.compose.ui.graphics.painter.Painter,
     litIcon: androidx.compose.ui.graphics.painter.Painter,
     iconSize: androidx.compose.ui.unit.Dp,
@@ -424,7 +499,7 @@ private fun TabIcons(
     Box(contentAlignment = Alignment.Center) {
         Icon(
             painter = unlitIcon,
-            contentDescription = stringResource(screen.titleId),
+            contentDescription = description,
             tint = Color.White,
             modifier = Modifier
                 .size(iconSize)
@@ -436,7 +511,7 @@ private fun TabIcons(
         Icon(
             painter = litIcon,
             contentDescription = null,
-            tint = Color.White,
+            tint = com.mochyy.mochymusic.ui.theme.LocalChromeAccent.current ?: Color.White,
             modifier = Modifier
                 .size(iconSize)
                 .graphicsLayer {

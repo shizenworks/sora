@@ -59,6 +59,8 @@ import coil3.compose.AsyncImage
 import com.mochyy.mochymusic.LocalPlayerConnection
 import com.mochyy.mochymusic.R
 import com.mochyy.mochymusic.constants.PlayerHorizontalPadding
+import com.mochyy.mochymusic.constants.QueueEditLockKey
+import com.mochyy.mochymusic.utils.rememberPreference
 import com.mochyy.mochymusic.ui.component.PlayingIndicatorBox
 import com.mochyy.mochymusic.ui.component.SwipeAction
 import com.mochyy.mochymusic.ui.component.SwipeActionsBox
@@ -152,6 +154,8 @@ fun QueueScreen(
     var draggingSection by remember { mutableStateOf<QueueSection?>(null) }
     var awaitingCommit by remember { mutableStateOf(false) }
     val rows = localRows ?: playerRows
+    // queue lock: no swipe-remove, swipe-play-next or drag while on
+    val (queueLocked, setQueueLocked) = rememberPreference(QueueEditLockKey, defaultValue = false)
 
     // The committed order comes back from the player as a new playerRows: switch back to it then.
     LaunchedEffect(playerRows) {
@@ -287,6 +291,14 @@ fun QueueScreen(
                 hasShadow = false,
                 modifier = Modifier.likeButtonTarget(likeBurst, LikeSlot.QUEUE),
             )
+            PressScaleActionButton(
+                icon = if (queueLocked) R.drawable.lock else R.drawable.lock_open,
+                tint = if (queueLocked) Color.White else Color.White.copy(alpha = 0.85f),
+                containerColor = if (queueLocked) Color.White.copy(alpha = 0.30f) else Color.White.copy(alpha = 0.15f),
+                onClick = { setQueueLocked(!queueLocked) },
+                hasShadow = false,
+                modifier = Modifier.padding(start = 8.dp),
+            )
         }
 
         LazyColumn(
@@ -394,14 +406,14 @@ fun QueueScreen(
                         modifier = enter,
                         // Only rows of the section being dragged in take part, so a song can't be
                         // dropped into another section (or into History) by dragging past a header.
-                        enabled = row.section.reorderable &&
+                        enabled = row.section.reorderable && !queueLocked &&
                             (draggingSection == null || draggingSection == row.section),
                     ) { isDragging ->
                         val uid = row.item.uid
                         val nowPlaying = row.section == QueueSection.NOW_PLAYING
                         SwipeActionsBox(
                             // The song playing can't be removed or moved next.
-                            enabled = draggingSection == null && !nowPlaying,
+                            enabled = draggingSection == null && !nowPlaying && !queueLocked,
                             start = {
                                 SwipeAction(
                                     icon = R.drawable.remove,
@@ -425,7 +437,7 @@ fun QueueScreen(
                                 onClick = {
                                     if (nowPlaying) playerConnection.togglePlayPause() else playerConnection.playQueueItem(uid)
                                 },
-                                handle = if (!row.section.reorderable) {
+                                handle = if (!row.section.reorderable || queueLocked) {
                                     null
                                 } else {
                                     {

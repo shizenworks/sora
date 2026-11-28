@@ -220,6 +220,8 @@ fun LyricsGlowLine(
 
     suppressEffects: Boolean = false,
 
+    lineBounce: Boolean = true,
+
     /** Which voice this line belongs to. See [LyricsAlignment]. */
     alignment: LyricsAlignment = LyricsAlignment.START,
 
@@ -273,7 +275,7 @@ fun LyricsGlowLine(
     )
 
     // Only lines without word timing move as a whole; word-synced ones rise word by word.
-    val wholeLineRise = wordMotion && entry.words.isNullOrEmpty()
+    val wholeLineRise = lineBounce && wordMotion && entry.words.isNullOrEmpty()
     val drop by com.mochyy.mochymusic.ui.utils.animateFloatOnChange(
         target = if (state == LyricsLineState.ACTIVE || !wholeLineRise) 0f else 1f,
         spec = androidx.compose.animation.core.spring(
@@ -1526,8 +1528,8 @@ private fun rememberBackingExpand(
             lastSec = sec
             val offWindow = firstStart != null && lastEnd != null &&
                 (sec < firstStart - BackingLeadInSec - 0.25 || sec > lastEnd + BackingTailSec + 0.25)
-            // rest backing lines that are closed and out of range or paused instead of waking at 120 hz
-            if (!changed && (offWindow || (paused && state.floatValue <= 0f))) {
+            // rest backing lines that are out of range or paused instead of waking at 120 hz (an open one too, nothing moves while paused)
+            if (!changed && (offWindow || paused)) {
                 val waitMs = if (!paused && firstStart != null && sec < firstStart - BackingLeadInSec - 0.25) {
                     ((firstStart - BackingLeadInSec - 0.2 - sec) * 1000.0).toLong().coerceIn(32L, 180L)
                 } else {

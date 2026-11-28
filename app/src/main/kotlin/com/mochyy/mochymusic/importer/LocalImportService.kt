@@ -10,6 +10,7 @@ import com.mochyy.mochymusic.R
 import com.mochyy.mochymusic.db.MusicDatabase
 import com.mochyy.mochymusic.db.entities.ImportSession
 import com.mochyy.mochymusic.db.entities.ImportSessionSong
+import com.mochyy.mochymusic.db.nowLocal
 import com.mochyy.mochymusic.models.TransferBatch
 import com.mochyy.mochymusic.models.TransferItem
 import com.mochyy.mochymusic.models.TransferState
@@ -30,7 +31,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
-import java.time.LocalDateTime
+import kotlinx.datetime.LocalDateTime
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.coroutines.coroutineContext
@@ -111,7 +112,7 @@ class LocalImportService @Inject constructor(
             val files = (prepare?.invoke() ?: picked).distinctBy { it.uri }
             if (prepare != null) _batch.value = TransferBatch(files.map { it.toItem() })
             if (files.isEmpty()) return@launch
-            val session = database.insert(ImportSession(source = ImportSession.DEVICE_SOURCE, startedAt = LocalDateTime.now()))
+            val session = database.insert(ImportSession(source = ImportSession.DEVICE_SOURCE, startedAt = nowLocal()))
             try {
                 files.forEachIndexed { index, file -> importOne(index, file, session) }
             } finally {

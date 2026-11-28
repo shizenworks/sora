@@ -184,6 +184,7 @@ import com.mochyy.mochymusic.playback.DownloadUtil
 import com.mochyy.mochymusic.playback.MusicService
 import com.mochyy.mochymusic.playback.MusicService.MusicBinder
 import com.mochyy.mochymusic.playback.PlayerConnection
+import com.mochyy.mochymusic.ui.player.video.VideoPipLayer
 import com.mochyy.mochymusic.playback.queues.YouTubeQueue
 import com.mochyy.mochymusic.ui.component.AppNavigationBar
 import com.mochyy.mochymusic.ui.component.navigateToTab
@@ -201,7 +202,6 @@ import com.mochyy.mochymusic.ui.screens.search.searchRoute
 import com.mochyy.mochymusic.ui.screens.navigationBuilder
 import com.mochyy.mochymusic.ui.screens.DarkMode
 import com.mochyy.mochymusic.ui.screens.NavigationTab
-import com.mochyy.mochymusic.ui.theme.ColorSaver
 import com.mochyy.mochymusic.ui.theme.DefaultThemeColor
 import com.mochyy.mochymusic.ui.theme.MochyTheme
 import com.mochyy.mochymusic.ui.theme.extractThemeColor
@@ -215,6 +215,7 @@ import com.mochyy.mochymusic.ui.launch.LocalLaunchIntro
 import com.mochyy.mochymusic.ui.launch.launchRise
 import com.mochyy.mochymusic.LocalDatabase
 import com.mochyy.mochymusic.LocalDownloadUtil
+import com.mochyy.mochymusic.shared.playback.LocalPlayerConnection as SharedLocalPlayerConnection
 import com.mochyy.mochymusic.utils.SyncUtils
 import com.mochyy.mochymusic.utils.dataStore
 import com.mochyy.mochymusic.utils.get
@@ -292,6 +293,10 @@ class MainActivity : ComponentActivity() {
     private var pendingIntent: Intent? = null
 
     private var playerConnection by mutableStateOf<PlayerConnection?>(null)
+
+    // picture-in-picture for the video style: the setting, and whether the window is in it now
+    private var videoPipOn by mutableStateOf(false)
+    private var inPip by mutableStateOf(false)
 
     /** Bumped when launched from an update notification; the composition opens the version sheet. */
     private var openUpdateRequests by mutableStateOf(0)
@@ -411,6 +416,26 @@ class MainActivity : ComponentActivity() {
         return super.dispatchTouchEvent(ev)
     }
 
+    // before android 12 there is no auto-enter, so leaving the app with a video picture opens the window here
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        val session = com.mochyy.mochymusic.ui.player.video.VideoPip.session
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && videoPipOn && session != null) {
+            runCatching {
+                enterPictureInPictureMode(
+                    com.mochyy.mochymusic.ui.player.video.VideoPip.params(
+                        this, session, playing = playerConnection?.isPlaying?.value == true, autoEnter = false,
+                    ),
+                )
+            }
+        }
+    }
+
+    override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean, newConfig: android.content.res.Configuration) {
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+        inPip = isInPictureInPictureMode
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         if (intent.action == com.mochyy.mochymusic.ui.screens.update.ActionOpenUpdate) {
@@ -462,6 +487,13 @@ class MainActivity : ComponentActivity() {
 
         lifecycleScope.launch {
             dataStore.data
+                .map { it[com.mochyy.mochymusic.constants.VideoPictureInPictureKey] == true }
+                .distinctUntilChanged()
+                .collect { videoPipOn = it }
+        }
+
+        lifecycleScope.launch {
+            dataStore.data
                 .map { it[DisableScreenshotKey] ?: false }
                 .distinctUntilChanged()
                 .collectLatest {
@@ -482,12 +514,29 @@ class MainActivity : ComponentActivity() {
             lifecycle,
         )
         setContent(parent = motionRecomposer) {
-            mochyApp(
-                playerConnection = playerConnection,
-                database = database,
-                downloadUtil = downloadUtil,
-                syncUtils = syncUtils,
-            )
+            // the one settings store (sealed by the vault) for every shared screen, and the toast a held settings row shows
+            CompositionLocalProvider(
+                com.mochyy.mochymusic.utils.LocalAppPreferences provides dataStore,
+                com.mochyy.mochymusic.ui.component.LocalSettingsDetail provides ShowSettingsDetail,
+            ) {
+                // the UI scale is applied once here, at the root: every dp and sp in the app grows or shrinks with it
+                val (uiScale) = rememberPreference(com.mochyy.mochymusic.constants.UiScalePercentKey, defaultValue = 100)
+                val baseDensity = LocalDensity.current
+                CompositionLocalProvider(
+                    LocalDensity provides androidx.compose.ui.unit.Density(
+                        density = baseDensity.density * uiScale / 100f,
+                        fontScale = baseDensity.fontScale,
+                    ),
+                ) {
+                    mochyApp(
+                        playerConnection = playerConnection,
+                        database = database,
+                        downloadUtil = downloadUtil,
+                        syncUtils = syncUtils,
+                    )
+                    VideoPipLayer(this@MainActivity, videoPipOn, playerConnection, inPip)
+                }
+            }
         }
     }
 
@@ -577,37 +626,33 @@ class MainActivity : ComponentActivity() {
         val (selectedThemeColorInt) = rememberPreference(SelectedThemeColorKey, defaultValue = DefaultThemeColor.toArgb())
         val selectedThemeColor = Color(selectedThemeColorInt)
 
-        var themeColor by rememberSaveable(stateSaver = ColorSaver) {
-            mutableStateOf(selectedThemeColor)
-        }
-
-        LaunchedEffect(selectedThemeColor) {
-            if (!enableDynamicTheme) {
-                themeColor = selectedThemeColor
-            }
-        }
+        val (accentInt) = rememberPreference(com.mochyy.mochymusic.constants.AccentColorKey, defaultValue = 0)
+        val (accentFromArt) = rememberPreference(com.mochyy.mochymusic.constants.AccentFromArtKey, defaultValue = false)
+        var artworkColorInt by rememberSaveable { mutableStateOf<Int?>(null) }
 
         // the launch intro waits for this, so the whole app doesn't recompose for a new colour
         // scheme halfway through it
-        var themeSettled by remember { mutableStateOf(false) }
+        var artworkSettled by remember { mutableStateOf(false) }
+        val themeSettled = !enableDynamicTheme || artworkSettled
+        val needsArtworkColor = enableDynamicTheme || accentFromArt
 
-        LaunchedEffect(playerConnection, enableDynamicTheme, selectedThemeColor) {
-            val playerConnection = playerConnection
-            if (!enableDynamicTheme || playerConnection == null) {
-                themeColor = selectedThemeColor
-                if (!enableDynamicTheme) themeSettled = true
+        LaunchedEffect(playerConnection, needsArtworkColor) {
+            if (!needsArtworkColor || playerConnection == null) {
+                artworkColorInt = null
                 return@LaunchedEffect
             }
 
             // pause dynamic theme extraction while the activity is stopped so background track changes don't decode covers or recompose hidden ui
             lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
-                playerConnection.service.currentMediaMetadata.collectLatest { song ->
-                    if (song?.thumbnailUrl != null) {
-                        withContext(Dispatchers.IO) {
+                playerConnection.service.currentMediaMetadata
+                    .map { it?.thumbnailUrl }
+                    .distinctUntilChanged()
+                    .collectLatest { artworkUrl ->
+                        artworkColorInt = if (artworkUrl.isNullOrBlank()) null else withContext(Dispatchers.IO) {
                             try {
                                 val result = imageLoader.execute(
                                     ImageRequest.Builder(this@MainActivity)
-                                        .data(song.thumbnailUrl)
+                                        .data(artworkUrl)
                                         .size(112, 112)
                                         .allowHardware(false)
                                         .memoryCachePolicy(CachePolicy.DISABLED)
@@ -616,23 +661,27 @@ class MainActivity : ComponentActivity() {
                                         .crossfade(false)
                                         .build()
                                 )
-                                themeColor = result.image?.toBitmap()?.extractThemeColor() ?: selectedThemeColor
-                            } catch (e: Exception) {
-
-                                themeColor = selectedThemeColor
+                                result.image?.toBitmap()?.extractThemeColor()?.toArgb()
+                            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                                throw cancelled
+                            } catch (_: Exception) {
+                                null
                             }
                         }
-                    } else {
-                        themeColor = selectedThemeColor
+                        artworkSettled = true
                     }
-                    themeSettled = true
-                }
             }
         }
+
+        val artworkColor = artworkColorInt?.let { Color(it) }
+        val themeColor = artworkColor.takeIf { enableDynamicTheme } ?: selectedThemeColor
+        val chromeAccent = artworkColor.takeIf { accentFromArt }
+            ?: accentInt.takeIf { it != 0 }?.let { Color(it) }
 
         MochyTheme(
             darkTheme = useDarkTheme,
             pureBlack = pureBlack,
+            accent = chromeAccent,
         ) {
             BoxWithConstraints(
                 modifier = Modifier
@@ -659,14 +708,26 @@ class MainActivity : ComponentActivity() {
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val (previousTab, setPreviousTab) = rememberSaveable { mutableStateOf("home") }
 
-                val navigationItems = remember {
-                        Screens.MainScreens
+                val (navTabs) = rememberPreference(com.mochyy.mochymusic.constants.NavTabsKey, defaultValue = "")
+                val navigationItems = remember(navTabs) {
+                    com.mochyy.mochymusic.ui.component.navigationTabs(navTabs)
                 }
                 val (slimNav) = rememberPreference(SlimNavBarKey, defaultValue = false)
                 // Neiro's font choice: keeps the app's type on the font picked in Customisation > Font
                 com.mochyy.mochymusic.ui.theme.ApplyAppFont()
                 // flipped in Experimental while the app is open: it starts (or stops) turning right away
                 val (landscapeUnlocked) = rememberPreference(com.mochyy.mochymusic.constants.LandscapeUnlockedKey, defaultValue = false)
+                val (tabletLayout) = rememberPreference(com.mochyy.mochymusic.constants.TabletLayoutKey, defaultValue = false)
+                LaunchedEffect(tabletLayout) { com.mochyy.mochymusic.ui.utils.TabletLayout.forced = tabletLayout }
+                val (systemFont) = rememberPreference(com.mochyy.mochymusic.constants.SystemFontKey, defaultValue = false)
+                LaunchedEffect(systemFont) { com.mochyy.mochymusic.ui.theme.AppFont.useSystem = systemFont }
+                // the user's own font file, loaded off the main thread; it stands in for both inter and the system font
+                val (customFont) = rememberPreference(com.mochyy.mochymusic.constants.CustomFontKey, defaultValue = "")
+                val (customBoldFont) = rememberPreference(com.mochyy.mochymusic.constants.CustomBoldFontKey, defaultValue = "")
+                LaunchedEffect(customFont, customBoldFont) {
+                    com.mochyy.mochymusic.ui.theme.AppFont.custom =
+                        if (customFont.isEmpty()) null else com.mochyy.mochymusic.ui.theme.CustomFont.load(this@MainActivity)
+                }
                 LaunchedEffect(landscapeUnlocked) {
                     if (!isTelevision()) com.mochyy.mochymusic.ui.utils.WindowTurning.setUnlocked(this@MainActivity, landscapeUnlocked)
                 }
@@ -677,7 +738,7 @@ class MainActivity : ComponentActivity() {
                 val tabOpenedFromShortcut = remember {
                     when (intent?.action) {
                         ACTION_SEARCH -> NavigationTab.SEARCH
-                        ACTION_LIBRARY -> NavigationTab.SEARCH
+                        ACTION_LIBRARY -> NavigationTab.LIBRARY
                         else -> null
                     }
                 }
@@ -762,6 +823,17 @@ class MainActivity : ComponentActivity() {
                 val navRowHeight = wideBar?.rowHeight
                     ?: (NavigationBarHeight + if (com.mochyy.mochymusic.modules.skin.ActiveSkin.bar == null) navBarStyle.extraHeight else 0.dp)
                 val navPadding = if (slimNav && wideBar == null) SlimNavBarHeight else navRowHeight
+                // the bar slides away on scroll only on a phone's bottom bar, not the wide pill
+                val (hideNavOnScroll) = rememberPreference(com.mochyy.mochymusic.constants.HideNavOnScrollKey, defaultValue = false)
+                val navHide = remember { com.mochyy.mochymusic.ui.component.NavBarHide() }
+                val navHideConnection = com.mochyy.mochymusic.ui.component.rememberNavBarHideConnection(
+                    state = navHide,
+                    barHeightPx = with(density) { navRowHeight.toPx() },
+                    enabled = hideNavOnScroll && wideBar == null,
+                )
+                LaunchedEffect(hideNavOnScroll) {
+                    if (!hideNavOnScroll) navHide.progress = 0f
+                }
 
                 val playerBottomSheetState = rememberBottomSheetState(
                     dismissedBound = 0.dp,
@@ -818,6 +890,8 @@ class MainActivity : ComponentActivity() {
                     }
 
                     topAppBarScrollBehavior.state.resetHeightOffset()
+                    // a new page always shows the bar again
+                    navHide.progress = 0f
 
                     navController.currentBackStackEntry?.destination?.route?.let {
                         setPreviousTab(it)
@@ -932,13 +1006,20 @@ class MainActivity : ComponentActivity() {
                     com.mochyy.mochymusic.ui.component.LocalPlayerBottomSheetState provides playerBottomSheetState,
 
                     LocalPlayerConnection provides playerConnection,
+                    // the same player for shared Compose code; the app's own LocalPlayerConnection stays the Android type
+                    SharedLocalPlayerConnection provides playerConnection,
                     LocalGlassState provides glassState,
                     com.mochyy.mochymusic.ui.component.liquid.LocalLiquidGlass provides liquidGlass,
+                    // the Android-only looks shared screens draw through
+                    com.mochyy.mochymusic.ui.component.LocalPlatformSkin provides com.mochyy.mochymusic.ui.rememberAndroidPlatformSkin(liquidGlass),
                     com.mochyy.mochymusic.ui.component.liquid.LocalAppBackdrop provides appBackdrop,
                     LocalHideAppChrome provides hideAppChrome,
                     LocalDetailAccentColor provides detailAccentColor,
                     LocalArtworkColor provides themeColor,
                     LocalPlayerAwareWindowInsets provides playerAwareWindowInsets,
+                    com.mochyy.mochymusic.ui.component.LocalSubSettingsChrome provides com.mochyy.mochymusic.ui.component.AppSubSettingsChrome,
+                    // the dev spaces people's photos are app drawables, so Android loads them (Coil) and hands them over
+                    com.mochyy.mochymusic.ui.screens.settings.devspace.LocalDevPictures provides com.mochyy.mochymusic.ui.screens.settings.devspace.AppDevPictures,
                     LocalDownloadUtil provides downloadUtil,
                     LocalShimmerTheme provides ShimmerTheme,
                     LocalSyncUtils provides syncUtils,
@@ -1179,7 +1260,10 @@ class MainActivity : ComponentActivity() {
                                                     navController.navigateToTab(route)
                                                 },
                                                 obscured = { playerBottomSheetState.progress > 0.001f },
-                                                modifier = barMotion,
+                                                // slides down out of the screen as the list scrolls, read while drawing
+                                                modifier = barMotion.graphicsLayer {
+                                                    translationY = navBarTotalHeight.toPx() * navHide.progress
+                                                },
                                             )
                                         }
                                         }
@@ -1189,6 +1273,7 @@ class MainActivity : ComponentActivity() {
                             modifier = Modifier
                                 .fillMaxSize()
                                 .nestedScroll(topAppBarScrollBehavior.nestedScrollConnection)
+                                .nestedScroll(navHideConnection)
                         ) {
                             Row(Modifier.fillMaxSize()) {
                                 Box(
@@ -1270,6 +1355,7 @@ class MainActivity : ComponentActivity() {
                                         startDestination = when (tabOpenedFromShortcut ?: defaultOpenTab) {
                                             NavigationTab.HOME -> Screens.Home
                                             NavigationTab.SEARCH -> Screens.Search
+                                            NavigationTab.LIBRARY -> Screens.Library
                                             else -> Screens.Home
                                         }.route,
 
@@ -1751,7 +1837,11 @@ private fun HomeUpdatePrompt(currentRoute: String?) {
         )
     }
 }
-val LocalPlayerAwareWindowInsets = staticCompositionLocalOf<WindowInsets> { error("No WindowInsets provided") }
+// a held settings row's whole description, in the top toast
+private val ShowSettingsDetail: (String) -> Unit = { full ->
+    com.mochyy.mochymusic.ui.component.TopToaster.show(full, iconRes = R.drawable.info)
+}
+
 val LocalDownloadUtil = staticCompositionLocalOf<DownloadUtil> { error("No DownloadUtil provided") }
 val LocalSyncUtils = staticCompositionLocalOf<SyncUtils> { error("No SyncUtils provided") }
 val LocalCropAlbumArt = compositionLocalOf { false }

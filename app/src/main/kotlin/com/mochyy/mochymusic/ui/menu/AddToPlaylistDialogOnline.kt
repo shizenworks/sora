@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import com.mochyy.mochymusic.db.entities.toggleLike
 import com.mochyy.mochymusic.utils.listItemShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
@@ -39,7 +40,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.TextUnitType
 import androidx.compose.ui.unit.dp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import org.koin.compose.viewmodel.koinViewModel
 import com.music.innertube.YouTube
 import com.music.innertube.models.SongItem
 import com.mochyy.mochymusic.LocalDatabase
@@ -61,6 +62,7 @@ import com.mochyy.mochymusic.ui.component.SortHeader
 import com.mochyy.mochymusic.utils.rememberEnumPreference
 import com.mochyy.mochymusic.utils.rememberPreference
 import com.mochyy.mochymusic.utils.reportException
+import com.mochyy.mochymusic.LocalSyncUtils
 import com.mochyy.mochymusic.viewmodels.PlaylistsViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -78,9 +80,10 @@ fun AddToPlaylistDialogOnline(
     onDismiss: () -> Unit,
     onProgressStart: (Boolean) -> Unit,
     onPercentageChange: (Int) -> Unit,
-    viewModel: PlaylistsViewModel = hiltViewModel()
+    viewModel: PlaylistsViewModel = koinViewModel()
 ) {
     val database = LocalDatabase.current
+    val syncUtils = LocalSyncUtils.current
     val coroutineScope = rememberCoroutineScope()
     val viewStateMap = remember { mutableStateMapOf<String, ItemsPage?>() }
     val (sortType, onSortTypeChange) = rememberEnumPreference(
@@ -326,9 +329,12 @@ fun AddToPlaylistDialogOnline(
                                                         withContext(Dispatchers.IO) {
                                                             try {
                                                                 database.insert(firstSongMedia)
+                                                                val liked = firstSongEnt.toggleLike()
                                                                 database.query {
-                                                                    update(firstSongEnt.toggleLike())
+                                                                    update(liked)
                                                                 }
+                                                                // toggleLike itself no longer reaches YouTube, so imports push the like here
+                                                                syncUtils.likeSong(liked)
                                                             } catch (e: Exception) {
                                                                 Timber.tag("Exception inserting song in database:")
                                                                     .e(e.toString())

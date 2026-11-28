@@ -9,17 +9,13 @@ import com.music.innertube.YouTube
 import com.music.innertube.models.PlaylistItem
 import com.music.innertube.pages.BrowseResult
 import com.mochyy.mochymusic.utils.reportException
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
-@HiltViewModel
-class GenreViewModel
-@Inject
-constructor(
+// Koin builds it (di/koin/OnlineKoin.kt); community shelves use YouTube directly
+class GenreViewModel(
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
     private val browseId = savedStateHandle.get<String>("browseId")!!

@@ -38,6 +38,7 @@ import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.ui.AspectRatioFrameLayout
 import com.mochyy.mochymusic.constants.CanvasBestQualityKey
+import com.mochyy.mochymusic.ui.component.getNative
 import com.mochyy.mochymusic.utils.followAppProxy
 import com.mochyy.mochymusic.utils.rememberDataSaverActive
 import com.mochyy.mochymusic.utils.rememberPreference

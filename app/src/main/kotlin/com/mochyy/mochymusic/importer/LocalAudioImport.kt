@@ -24,9 +24,10 @@ import com.mochyy.mochymusic.db.entities.FormatEntity
 import com.mochyy.mochymusic.db.entities.SongAlbumMap
 import com.mochyy.mochymusic.db.entities.SongArtistMap
 import com.mochyy.mochymusic.db.entities.SongEntity
+import com.mochyy.mochymusic.db.nowLocal
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.time.LocalDateTime
+import kotlinx.datetime.LocalDateTime
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 
@@ -73,7 +74,7 @@ suspend fun importLocalAudio(
                     thumbnailUrl = thumbnailUrl,
                     albumName = metadata.album,
                     isLocal = true,
-                    inLibrary = LocalDateTime.now(),
+                    inLibrary = nowLocal(),
                     localUri = uri.toString(),
                     genre = metadata.genre.orEmpty(),
                 ),
