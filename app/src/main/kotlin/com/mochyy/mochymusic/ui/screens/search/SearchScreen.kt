@@ -63,7 +63,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import org.koin.compose.viewmodel.koinViewModel
 import androidx.navigation.NavController
 import com.mochyy.mochymusic.ui.screens.Screens
 import com.music.innertube.models.AlbumItem
@@ -138,7 +138,7 @@ fun SearchScreen(
     }
     var active by rememberSaveable { mutableStateOf(false) }
 
-    val suggestionViewModel: OnlineSearchSuggestionViewModel = hiltViewModel()
+    val suggestionViewModel: OnlineSearchSuggestionViewModel = koinViewModel()
     val suggestionState by suggestionViewModel.viewState.collectAsState()
 
     LaunchedEffect(active, query.text) {
@@ -349,7 +349,7 @@ fun SearchScreen(
 private fun SearchBrowseContent(
     listState: LazyListState,
     navController: NavController,
-    viewModel: MoodAndGenresViewModel = hiltViewModel(),
+    viewModel: MoodAndGenresViewModel = koinViewModel(),
     // tiles in a row: two upright, three in the wider pane on its side
     columns: Int = 2,
     topPadding: Dp = searchTopBarHeight(withTitle = true),

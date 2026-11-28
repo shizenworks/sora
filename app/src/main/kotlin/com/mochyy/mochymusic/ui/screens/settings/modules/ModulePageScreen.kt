@@ -46,7 +46,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.navigation.compose.hiltViewModel
+import org.koin.compose.viewmodel.koinViewModel
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import com.mochyy.mochymusic.LocalPlayerAwareWindowInsets
@@ -75,7 +75,7 @@ const val ModulePageRoutePattern = "module_page/{id}/{page}"
 fun modulePageRoute(id: String, page: String) = "module_page/${Uri.encode(id)}/${Uri.encode(page)}"
 
 @Composable
-fun ModulePageScreen(navController: NavController, id: String, pageId: String, viewModel: ModulesViewModel = hiltViewModel()) {
+fun ModulePageScreen(navController: NavController, id: String, pageId: String, viewModel: ModulesViewModel = koinViewModel()) {
     val entries by viewModel.entries.collectAsState()
     val entry = entries.firstOrNull { it.id == id }
     val skin = remember(entry) { viewModel.skinOf(id) }

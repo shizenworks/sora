@@ -431,11 +431,17 @@ class CrossmixTest {
             analyze(synthTrack(100.0, 200)) to nearTempoTrack,
         )
         for ((out, inc) in pairs) {
-            val plan = CrossmixPlanner.plan(CrossmixTrackInput("o", 200_000L, out, null), CrossmixTrackInput("i", 0L, inc, null))
+            val outgoing = CrossmixTrackInput("o", 200_000L, out, null)
+            val incoming = CrossmixTrackInput("i", 0L, inc, null)
+            val plan = CrossmixPlanner.plan(outgoing, incoming)
             assertTrue("${plan.style.label} is a flavour style", plan.style.use != StyleUse.Flavour)
-            if (!plan.style.entersAtEnd) {
-                val seconds = plan.lengthBeats * plan.outBeatMs / 1_000.0
-                assertTrue("${plan.style.label} blends for $seconds s", seconds <= if (plan.beatMatched) 16.0 else 8.5)
+            // the length caps are for blends the planner picks. With always mix on (the default), a pair it
+            // can't plan gets the forced filter blend instead, deliberately about 10 s at the song's own
+            // count (CrossmixPlanner.forcedBlend, added after this rule), so the caps are checked without it
+            val planned = CrossmixPlanner.plan(outgoing, incoming, CrossmixSettings.Default.copy(alwaysMix = false))
+            if (!planned.style.entersAtEnd) {
+                val seconds = planned.lengthBeats * planned.outBeatMs / 1_000.0
+                assertTrue("${planned.style.label} blends for $seconds s", seconds <= if (planned.beatMatched) 16.0 else 8.5)
             }
         }
     }

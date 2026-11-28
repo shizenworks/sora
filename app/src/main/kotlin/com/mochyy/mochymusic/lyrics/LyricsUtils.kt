@@ -3,12 +3,15 @@
 package com.mochyy.mochymusic.lyrics
 
 import android.text.format.DateUtils
+import com.atilika.kuromoji.ipadic.Token
 import com.atilika.kuromoji.ipadic.Tokenizer
 import com.github.promeg.pinyinhelper.Pinyin
+import com.mochyy.mochymusic.BuildConfig
 import com.mochyy.mochymusic.db.entities.LyricsEntity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.withContext
+import java.text.Normalizer
 import java.util.Locale
 
 @Suppress("RegExpRedundantEscape")
@@ -337,6 +340,14 @@ object LyricsUtils {
 
     fun releaseKuromoji() {
         synchronized(kuromojiLock) { kuromojiInstance = null }
+    }
+
+    private val KanaRun = Regex("[ぁ-ゖァ-ヺーｦ-ﾟ\\u3099\\u309A]+")
+
+    private fun tokenizeJapanese(text: String): List<Token>? = if (BuildConfig.COMPACT_APK) {
+        JapaneseLanguagePackManager.tokenizerOrNull()?.tokenize(text)
+    } else {
+        kuromojiTokenizer.tokenize(text)
     }
 
     private val HEX_ENTITY_REGEX = "&#x([0-9a-fA-F]+);".toRegex()
@@ -1060,7 +1071,8 @@ object LyricsUtils {
      */
     suspend fun romanizeJapaneseAligned(text: String): List<Pair<IntRange, String>> =
         withContext(Dispatchers.Default) {
-            val tokens = kuromojiTokenizer.tokenize(text)
+            val tokens = tokenizeJapanese(text)
+                ?: return@withContext KanaRun.findAll(text).map { it.range to kanaToRomaji(it.value) }.toList()
             tokens.mapIndexed { index, token ->
                 val reading = token.reading?.takeIf { it.isNotEmpty() && it != "*" } ?: token.surface
                 val next = tokens.getOrNull(index + 1)
@@ -1221,7 +1233,8 @@ object LyricsUtils {
     }
 
     suspend fun romanizeJapanese(text: String): String = withContext(Dispatchers.Default) {
-        val tokens = kuromojiTokenizer.tokenize(text)
+        val tokens = tokenizeJapanese(text)
+            ?: return@withContext KanaRun.replace(text) { kanaToRomaji(it.value) }
         val romanizedTokens = tokens.mapIndexed { index, token ->
             val currentReading = if (token.reading.isNullOrEmpty() || token.reading == "*") {
                 token.surface
@@ -1237,6 +1250,12 @@ object LyricsUtils {
         }
         romanizedTokens.joinToString(" ")
     }
+
+    private fun kanaToRomaji(kana: String): String = katakanaToRomaji(
+        Normalizer.normalize(kana, Normalizer.Form.NFKC).map {
+            if (it in 'ぁ'..'ゖ') (it.code + ('ァ' - 'ぁ')).toChar() else it
+        }.joinToString(""),
+    )
 
     // a word's katakana reading in romaji; the next word's reading is only for a small tsu that ends this one
     fun katakanaToRomaji(katakana: String?, nextKatakana: String? = null): String {

@@ -16,7 +16,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
-import java.io.IOException
 import java.util.concurrent.ConcurrentHashMap
 
 // while mochy is on screen, a phone says hello to the other phones and tablets it's paired with, so each knows the other is there to steer
@@ -72,9 +71,10 @@ internal class PhonePeers(
     }
 
     // true when the peer answered, whatever it said
-    private fun hello(peer: PairedDevice, address: String, port: Int, myPort: Int): Boolean = try {
+    private suspend fun hello(peer: PairedDevice, address: String, port: Int, myPort: Int): Boolean = try {
         val url = "${LinkWire.baseUrl(address, port)}/hello?port=$myPort&kind=${DeviceKind.of(context).wire}"
-        LinkWire.get(url, LinkCredentials(LinkIdentity.id(context), peer.key)).use { response ->
+        val response = LinkWire.get(url, LinkCredentials(LinkIdentity.id(context), peer.key))
+        try {
             when (response.code) {
                 200 -> {
                     host.markLive(peer, address, port)
@@ -87,8 +87,10 @@ internal class PhonePeers(
                 }
                 else -> false
             }
+        } finally {
+            response.close()
         }
-    } catch (_: IOException) {
+    } catch (_: Exception) {
         false
     }
 

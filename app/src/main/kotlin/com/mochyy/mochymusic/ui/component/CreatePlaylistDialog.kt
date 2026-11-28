@@ -27,7 +27,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
-import java.time.LocalDateTime
+import com.mochyy.mochymusic.db.nowLocal
 
 /**
  * Creating a playlist, as a sheet (the "Create playlist" mock): a carousel of generated covers -
@@ -115,7 +115,7 @@ fun CreatePlaylistDialog(
                                     id = playlistId,
                                     name = name,
                                     browseId = browseId,
-                                    bookmarkedAt = LocalDateTime.now(),
+                                    bookmarkedAt = nowLocal(),
                                     isEditable = true,
                                     thumbnailUrl = cover,
                                     description = form.description.trim().ifBlank { null },

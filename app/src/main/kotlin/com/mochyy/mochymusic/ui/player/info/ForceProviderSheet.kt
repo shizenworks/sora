@@ -154,6 +154,9 @@ fun ForceProviderSheet(currentProviderId: String?, onDismiss: () -> Unit) {
                 )
                 Spacer(Modifier.height(16.dp))
                 SwitchStatus(state, nameOf = modules::nameOf)
+                if (providers.isEmpty()) {
+                    Text(text = stringResource(R.string.pc_switch_source_empty), color = InfoMuted, fontSize = 13.sp)
+                }
                 providers.forEachIndexed { index, id ->
                     val module = modules.module(id)
                     val usable = modules.isUsable(id)

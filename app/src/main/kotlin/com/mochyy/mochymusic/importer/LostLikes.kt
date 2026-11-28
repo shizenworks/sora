@@ -5,9 +5,10 @@ package com.mochyy.mochymusic.importer
 import android.content.Context
 import com.mochyy.mochymusic.db.MusicDatabase
 import com.mochyy.mochymusic.db.entities.SongEntity
+import com.mochyy.mochymusic.db.nowLocal
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.time.LocalDateTime
+import kotlinx.datetime.LocalDateTime
 
 /** brings back likes a sync took off by mistake, from every record the app keeps of a like */
 object LostLikes {
@@ -24,7 +25,7 @@ object LostLikes {
             val dates = wanted(context, database)
             val songs = missing(database, dates)
             if (songs.isNotEmpty()) {
-                val now = LocalDateTime.now()
+                val now = nowLocal()
                 database.withTransaction {
                     songs.forEach { update(it.copy(liked = true, likedDate = dates[it.id] ?: now)) }
                 }

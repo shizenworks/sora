@@ -5,8 +5,6 @@
 package com.mochyy.mochymusic.viewmodels
 
 import android.content.Context
-import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -27,7 +25,6 @@ import com.mochyy.mochymusic.constants.ArtistSortTypeKey
 import com.mochyy.mochymusic.constants.HideExplicitKey
 import com.mochyy.mochymusic.constants.HideVideoSongsKey
 import com.mochyy.mochymusic.constants.HideYoutubeShortsKey
-import com.mochyy.mochymusic.constants.LibraryFilter
 import com.mochyy.mochymusic.constants.PlaylistSortDescendingKey
 import com.mochyy.mochymusic.constants.PlaylistSortType
 import com.mochyy.mochymusic.constants.PlaylistSortTypeKey
@@ -48,8 +45,6 @@ import com.mochyy.mochymusic.utils.ArtistImageResolver
 import com.mochyy.mochymusic.utils.SyncUtils
 import com.mochyy.mochymusic.utils.dataStore
 import com.mochyy.mochymusic.utils.reportException
-import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -63,13 +58,12 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.Duration
 import java.time.LocalDateTime
-import javax.inject.Inject
+import com.mochyy.mochymusic.db.nowLocal
+import kotlinx.datetime.toJavaLocalDateTime
 
-@HiltViewModel
 class LibrarySongsViewModel
-@Inject
 constructor(
-    @ApplicationContext context: Context,
+    context: Context,
     database: MusicDatabase,
     downloadUtil: DownloadUtil,
     private val syncUtils: SyncUtils,
@@ -110,11 +104,9 @@ constructor(
     }
 }
 
-@HiltViewModel
 class LibraryArtistsViewModel
-@Inject
 constructor(
-    @ApplicationContext context: Context,
+    context: Context,
     database: MusicDatabase,
     private val syncUtils: SyncUtils,
 ) : ViewModel() {
@@ -146,7 +138,7 @@ constructor(
                 .map { it.artist }
                 .filter {
                     it.thumbnailUrl == null || Duration.between(
-                        it.lastUpdateTime,
+                        it.lastUpdateTime.toJavaLocalDateTime(),
                         LocalDateTime.now()
                     ) > Duration.ofDays(10)
                 }.forEach { artist ->
@@ -161,7 +153,7 @@ constructor(
                                 update(
                                     artist.copy(
                                         thumbnailUrl = preferredThumbnailUrl,
-                                        lastUpdateTime = LocalDateTime.now()
+                                        lastUpdateTime = nowLocal()
                                     )
                                 )
                             }
@@ -172,11 +164,9 @@ constructor(
     }
 }
 
-@HiltViewModel
 class LibraryAlbumsViewModel
-@Inject
 constructor(
-    @ApplicationContext context: Context,
+    context: Context,
     database: MusicDatabase,
     private val syncUtils: SyncUtils,
 ) : ViewModel() {
@@ -232,11 +222,9 @@ constructor(
     }
 }
 
-@HiltViewModel
 class LibraryPlaylistsViewModel
-@Inject
 constructor(
-    @ApplicationContext context: Context,
+    context: Context,
     database: MusicDatabase,
     private val syncUtils: SyncUtils,
 ) : ViewModel() {
@@ -263,11 +251,9 @@ constructor(
             .distinctUntilChanged()
 }
 
-@HiltViewModel
 class ArtistSongsViewModel
-@Inject
 constructor(
-    @ApplicationContext context: Context,
+    context: Context,
     database: MusicDatabase,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
@@ -293,11 +279,9 @@ constructor(
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 }
 
-@HiltViewModel
 class LibraryMixViewModel
-@Inject
 constructor(
-    @ApplicationContext context: Context,
+    context: Context,
     database: MusicDatabase,
     private val syncUtils: SyncUtils,
 ) : ViewModel() {
@@ -371,7 +355,7 @@ constructor(
                 .filter {
                     it.thumbnailUrl == null ||
                             Duration.between(
-                                it.lastUpdateTime,
+                                it.lastUpdateTime.toJavaLocalDateTime(),
                                 LocalDateTime.now(),
                             ) > Duration.ofDays(10)
                 }.forEach { artist ->
@@ -386,7 +370,7 @@ constructor(
                                 update(
                                     artist.copy(
                                         thumbnailUrl = preferredThumbnailUrl,
-                                        lastUpdateTime = LocalDateTime.now(),
+                                        lastUpdateTime = nowLocal(),
                                     )
                                 )
                             }
@@ -395,12 +379,4 @@ constructor(
                 }
         }
     }
-}
-
-@HiltViewModel
-class LibraryViewModel
-@Inject
-constructor() : ViewModel() {
-    private val curScreen = mutableStateOf(LibraryFilter.LIBRARY)
-    val filter: MutableState<LibraryFilter> = curScreen
 }

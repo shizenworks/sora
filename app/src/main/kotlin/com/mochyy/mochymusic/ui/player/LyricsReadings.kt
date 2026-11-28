@@ -1,5 +1,9 @@
 package com.mochyy.mochymusic.ui.player
 
+import com.mochyy.mochymusic.constants.CustomAiModelKey
+import com.mochyy.mochymusic.constants.CustomAiBaseUrlKey
+import com.mochyy.mochymusic.constants.CustomAiApiKey
+import com.mochyy.mochymusic.constants.AiTranslatorConfig
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -31,6 +35,8 @@ import com.mochyy.mochymusic.constants.TranslateModeKey
 import com.mochyy.mochymusic.constants.TranslateSourceLanguageKey
 import com.mochyy.mochymusic.constants.YouTubeCaptionTranslationKey
 import com.mochyy.mochymusic.db.MusicDatabase
+import com.mochyy.mochymusic.lyrics.JapaneseLanguagePackManager
+import com.mochyy.mochymusic.lyrics.JapaneseLanguagePackState
 import com.mochyy.mochymusic.lyrics.LyricsEntry
 import com.mochyy.mochymusic.lyrics.LyricsTranslationHelper
 import com.mochyy.mochymusic.lyrics.LyricsUtils
@@ -63,8 +69,9 @@ fun LyricsReadings(
     val context = LocalContext.current
     // every language switch, in the order of RomanizeLanguageKeys; the list never changes, so reading them in a loop is safe
     val switches = RomanizeLanguageKeys.map { key -> rememberPreference(key, defaultValue = true).value }
+    val japanesePack by JapaneseLanguagePackManager.state.collectAsState()
 
-    LaunchedEffect(lines, switches) {
+    LaunchedEffect(lines, switches, japanesePack is JapaneseLanguagePackState.Installed) {
         val allowed = RomanizeLanguageKeys.zip(switches).toMap()
         readSong(lines, allowed = { allowed[it] != false }) { index, reading ->
             val entry = lines[index]
@@ -92,10 +99,24 @@ fun LyricsReadings(
     val (openRouterKey) = rememberPreference(OpenRouterApiKey, defaultValue = "")
     val (openRouterBaseUrl) = rememberPreference(
         OpenRouterBaseUrlKey,
-        defaultValue = "https://openrouter.ai/api/v1",
+        defaultValue = "",
     )
     val (openRouterModel) = rememberPreference(OpenRouterModelKey, defaultValue = "")
+    val (customBaseUrl) = rememberPreference(CustomAiBaseUrlKey, defaultValue = "")
+    val (customKey) = rememberPreference(CustomAiApiKey, defaultValue = "")
+    val (customModel) = rememberPreference(CustomAiModelKey, defaultValue = AiTranslatorConfig.ModelUnset)
     val (deeplKey) = rememberPreference(DeeplApiKey, defaultValue = "")
+    // the chosen provider decides the address and the key together, so a key only ever goes to its own provider
+    val ai = AiTranslatorConfig.resolve(
+        provider = aiProvider,
+        openRouterKey = openRouterKey,
+        openRouterModel = openRouterModel,
+        customBaseUrl = customBaseUrl,
+        customKey = customKey,
+        customModel = customModel,
+        legacyBaseUrl = openRouterBaseUrl,
+        deeplKey = deeplKey,
+    )
     val (deeplFormality) = rememberPreference(DeeplFormalityKey, defaultValue = "default")
     val (youtubeTranslations) = rememberPreference(YouTubeCaptionTranslationKey, defaultValue = true)
     val playerConnection = com.mochyy.mochymusic.LocalPlayerConnection.current
@@ -110,7 +131,7 @@ fun LyricsReadings(
 
     LaunchedEffect(
         lines, translationOn, translateLanguage, translateSourceLanguage, translateMode,
-        aiProvider, openRouterKey, deeplKey, youtubeTranslations,
+        ai, youtubeTranslations,
     ) {
         if (lines.isEmpty()) return@LaunchedEffect
         if (!translationOn) {
@@ -141,7 +162,7 @@ fun LyricsReadings(
         if (LyricsTranslationHelper.loadTranslationsFromDatabase(
                 lyrics = lines,
                 lyricsEntity = latestLyricsEntity,
-                targetLanguage = if (hasAiKeyFor(aiProvider, openRouterKey, deeplKey)) {
+                targetLanguage = if (ai.usable) {
                     target
                 } else {
                     LyricsTranslationHelper.languageTag(translateSourceLanguage, target)
@@ -153,7 +174,7 @@ fun LyricsReadings(
         // Google Translate needs no account, so it is used whenever the chosen AI provider has no
         // key. (This used to check for ANY key, so DeepL picked with only an OpenRouter key saved
         // went to DeepL and failed with "API key required".)
-        if (!hasAiKeyFor(aiProvider, openRouterKey, deeplKey)) {
+        if (!ai.usable) {
             LyricsTranslationHelper.translateWithGoogle(
                 lyrics = lines,
                 targetLanguage = target,
@@ -167,14 +188,14 @@ fun LyricsReadings(
             LyricsTranslationHelper.translateLyrics(
                 lyrics = lines,
                 targetLanguage = target,
-                apiKey = openRouterKey,
-                baseUrl = openRouterBaseUrl,
-                model = openRouterModel,
+                apiKey = ai.apiKey,
+                baseUrl = ai.baseUrl,
+                model = ai.model,
                 mode = translateMode,
                 scope = this,
                 context = context,
-                provider = aiProvider,
-                deeplApiKey = deeplKey,
+                provider = ai.provider,
+                deeplApiKey = if (ai.provider == AiTranslatorConfig.DeepL) ai.apiKey else "",
                 deeplFormality = deeplFormality,
                 songId = songId.orEmpty(),
                 database = database,
@@ -281,9 +302,6 @@ suspend fun readSong(
         onLine(index, reading)
     }
 }
-
-internal fun hasAiKeyFor(provider: String, openRouterKey: String, deeplKey: String): Boolean =
-    if (provider == "DeepL") deeplKey.isNotBlank() else openRouterKey.isNotBlank()
 
 // every language the readings can be switched off for; the style page's one switch sets them all
 val RomanizeLanguageKeys = listOf(

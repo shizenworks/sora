@@ -43,7 +43,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.navigation.compose.hiltViewModel
+import org.koin.compose.viewmodel.koinViewModel
 import com.mochyy.mochymusic.LocalDatabase
 import com.mochyy.mochymusic.R
 import com.mochyy.mochymusic.lyrics.LyricsProviderRegistry
@@ -65,7 +65,7 @@ internal fun TvSongInfoPanel(
     start: TvInfoStart,
     onOpen: (route: String) -> Unit,
     onDismiss: () -> Unit,
-    lyricsViewModel: LyricsMenuViewModel = hiltViewModel(),
+    lyricsViewModel: LyricsMenuViewModel = koinViewModel(),
 ) {
     val song by player.mediaMetadata.collectAsState()
     val current = song ?: return

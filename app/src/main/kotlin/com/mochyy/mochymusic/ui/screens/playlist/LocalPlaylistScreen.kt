@@ -81,7 +81,7 @@ import androidx.compose.ui.util.fastAny
 import androidx.compose.ui.util.fastForEachReversed
 import androidx.compose.ui.util.fastSumBy
 import androidx.core.net.toUri
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import org.koin.compose.viewmodel.koinViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.offline.DownloadRequest
@@ -101,6 +101,7 @@ import com.mochyy.mochymusic.constants.PlaylistSortType
 import com.mochyy.mochymusic.constants.ProfilePicUriKey
 import com.mochyy.mochymusic.db.entities.PlaylistEvent
 import com.mochyy.mochymusic.db.entities.PlaylistSongMap
+import com.mochyy.mochymusic.db.entities.toggleLike
 import com.mochyy.mochymusic.extensions.move
 import com.mochyy.mochymusic.extensions.toMediaItem
 import com.mochyy.mochymusic.models.toMediaMetadata
@@ -152,7 +153,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
-import java.time.LocalDateTime
+import com.mochyy.mochymusic.db.nowLocal
 
 private val YouTubeChannelRegex = Regex("music\\.youtube\\.com/channel/([A-Za-z0-9_-]+)")
 
@@ -162,7 +163,7 @@ private val YouTubeChannelRegex = Regex("music\\.youtube\\.com/channel/([A-Za-z0
 fun LocalPlaylistScreen(
     navController: NavController,
     scrollBehavior: TopAppBarScrollBehavior,
-    viewModel: LocalPlaylistViewModel = hiltViewModel(),
+    viewModel: LocalPlaylistViewModel = koinViewModel(),
 ) {
     val context = LocalContext.current
     val menuState = LocalMenuState.current
@@ -405,7 +406,7 @@ fun LocalPlaylistScreen(
                 startIndex = startIndex,
             )
         )
-        database.query { insert(PlaylistEvent(playlistId = current.id, timestamp = LocalDateTime.now())) }
+        database.query { insert(PlaylistEvent(playlistId = current.id, timestamp = nowLocal())) }
     }
 
     val openPlaylistMenu: (() -> Unit)? = playlist?.let { currentPlaylist ->

@@ -42,7 +42,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.navigation.compose.hiltViewModel
+import org.koin.compose.viewmodel.koinViewModel
 import androidx.navigation.NavController
 import com.mochyy.mochymusic.R
 import com.mochyy.mochymusic.modules.ModuleEntry
@@ -66,7 +66,7 @@ const val ModuleDocsUrl = "https://realidkroo.github.io/Mochy-Music/wiki/#module
 private val CardShape = RoundedCornerShape(26.dp)
 
 @Composable
-fun ModulesScreen(navController: NavController, viewModel: ModulesViewModel = hiltViewModel()) {
+fun ModulesScreen(navController: NavController, viewModel: ModulesViewModel = koinViewModel()) {
     val entries by viewModel.entries.collectAsState()
     val overlay = LocalZoomOutOverlayState.current
     val context = LocalContext.current

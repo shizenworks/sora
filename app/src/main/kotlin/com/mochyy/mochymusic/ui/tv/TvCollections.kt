@@ -27,6 +27,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import org.koin.compose.viewmodel.koinViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -44,13 +45,12 @@ import com.mochyy.mochymusic.viewmodels.AlbumViewModel
 import com.mochyy.mochymusic.viewmodels.LibraryHomeViewModel
 import com.mochyy.mochymusic.viewmodels.LocalPlaylistViewModel
 import com.mochyy.mochymusic.viewmodels.OnlinePlaylistViewModel
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import javax.inject.Inject
+import org.koin.compose.viewmodel.koinViewModel
 
 private fun Song.tvTrack() = TvTrack(
     id = id,
@@ -62,7 +62,7 @@ private fun Song.tvTrack() = TvTrack(
 )
 
 @Composable
-internal fun TvAlbumScreen(viewModel: AlbumViewModel = hiltViewModel(), transformKey: String? = null) {
+internal fun TvAlbumScreen(viewModel: AlbumViewModel = koinViewModel(), transformKey: String? = null) {
     val album by viewModel.albumWithSongs.collectAsState()
     val player = LocalPlayerConnection.current
     val current = album
@@ -90,7 +90,7 @@ internal fun TvAlbumScreen(viewModel: AlbumViewModel = hiltViewModel(), transfor
 }
 
 @Composable
-internal fun TvOnlinePlaylistScreen(viewModel: OnlinePlaylistViewModel = hiltViewModel(), transformKey: String? = null) {
+internal fun TvOnlinePlaylistScreen(viewModel: OnlinePlaylistViewModel = koinViewModel(), transformKey: String? = null) {
     val playlist by viewModel.playlist.collectAsState()
     val songs by viewModel.playlistSongs.collectAsState()
     val loading by viewModel.isLoading.collectAsState()
@@ -111,7 +111,7 @@ internal fun TvOnlinePlaylistScreen(viewModel: OnlinePlaylistViewModel = hiltVie
 }
 
 @Composable
-internal fun TvLocalPlaylistScreen(viewModel: LocalPlaylistViewModel = hiltViewModel(), transformKey: String? = null) {
+internal fun TvLocalPlaylistScreen(viewModel: LocalPlaylistViewModel = koinViewModel(), transformKey: String? = null) {
     val playlist by viewModel.playlist.collectAsState()
     val entries by viewModel.playlistSongs.collectAsState()
     val actions = LocalTvActions.current
@@ -146,8 +146,8 @@ internal enum class TvSongsKind(val key: String, val title: Int) {
     }
 }
 
-@HiltViewModel
-internal class TvSongsViewModel @Inject constructor(
+// Koin builds it (di/koin/PlayerTvKoin.kt); the tv screens take it with koinViewModel
+internal class TvSongsViewModel(
     database: MusicDatabase,
     cachedSongs: CachedSongs,
     savedStateHandle: SavedStateHandle,
@@ -176,7 +176,7 @@ internal class TvSongsViewModel @Inject constructor(
 }
 
 @Composable
-internal fun TvSongsScreen(viewModel: TvSongsViewModel = hiltViewModel()) {
+internal fun TvSongsScreen(viewModel: TvSongsViewModel = koinViewModel()) {
     val songs by viewModel.songs.collectAsState()
     val actions = LocalTvActions.current
     val list = songs.orEmpty()
@@ -198,7 +198,7 @@ private const val RevealCards = 18
 // albums, artists or playlists from the library as a wall of covers
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-internal fun TvGridScreen(kind: String, viewModel: LibraryHomeViewModel = hiltViewModel()) {
+internal fun TvGridScreen(kind: String, viewModel: LibraryHomeViewModel = koinViewModel()) {
     val actions = LocalTvActions.current
     val albums by viewModel.albums.collectAsState()
     val artists by viewModel.artists.collectAsState()

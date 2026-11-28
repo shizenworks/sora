@@ -65,6 +65,8 @@ class TransportTransitions(
         fun blendsSkips(): Boolean = false
         // finds a picked song's stream and fetches its first seconds, so it starts the moment the old one is gone
         suspend fun getReady(mediaId: String) {}
+        // a person pressed play (app, notification, lock screen, car, headset); the service's own resumes never come here
+        fun onExplicitPlay() {}
     }
 
     @Volatile var enabled = true
@@ -142,6 +144,7 @@ class TransportTransitions(
     }
 
     fun play() {
+        host.onExplicitPlay()
         val player = host.player
         val resumingFrom = if (phase == Phase.Pausing) currentLevel() else 0f
         if (phase != Phase.Pausing && player.playWhenReady && player.playbackState != Player.STATE_ENDED) {

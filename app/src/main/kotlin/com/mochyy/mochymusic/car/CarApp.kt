@@ -9,6 +9,7 @@ import androidx.car.app.constraints.ConstraintManager
 import androidx.car.app.media.MediaPlaybackManager
 import androidx.lifecycle.LifecycleCoroutineScope
 import androidx.media3.common.util.UnstableApi
+import com.mochyy.mochymusic.R
 import com.mochyy.mochymusic.car.screens.CarLyricsScreen
 import com.mochyy.mochymusic.car.screens.CarNowPlayingScreen
 import com.mochyy.mochymusic.link.phone.PhoneLinkHost
@@ -53,9 +54,18 @@ class CarApp(
     }
 
     // plays what was picked and opens the player, the way android auto's own media apps do
-    fun play(queue: Queue) {
-        playback.play(queue)
-        showNowPlaying()
+    fun play(queue: Queue, startIsChoice: Boolean = false) {
+        scope.launch {
+            // on mobile data with streaming off, only what's on the phone may start
+            val allowed = catalog.allowedToPlay(queue, startIsChoice)
+            if (allowed == null) {
+                toast(string(R.string.car_metered_blocked))
+                return@launch
+            }
+            if (allowed !== queue) toast(string(R.string.car_metered_partial))
+            playback.play(allowed)
+            showNowPlaying()
+        }
     }
 
     fun showNowPlaying() {

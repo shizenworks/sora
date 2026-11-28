@@ -265,4 +265,6 @@
         <item quantity="one">%1$d older import needs its link, so re-sync it from its own menu.</item>
         <item quantity="other">%1$d older imports need their link, so re-sync them from their own menus.</item>
     </plurals>
+    <string name="pc_switch_source">Switch playback source</string>
+    <string name="pc_switch_source_empty">Enable a playback source in Modules or Playback settings.</string>
 </resources>

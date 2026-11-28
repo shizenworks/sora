@@ -39,12 +39,15 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.constants.LyricsSourceSwitches
 import com.mochyy.mochymusic.lyrics.LyricsProviderRegistry
+import com.mochyy.mochymusic.ui.component.AppSwitch
 import com.mochyy.mochymusic.ui.component.PopupSheetHandle
 import com.mochyy.mochymusic.ui.component.PopupSheetState
 import com.mochyy.mochymusic.ui.component.SheetPillButton
 import com.mochyy.mochymusic.ui.player.menu.MenuRowSurface
 import com.mochyy.mochymusic.ui.screens.devices.SheetTitle
+import com.mochyy.mochymusic.utils.rememberPreference
 import sh.calvin.reorderable.ReorderableCollectionItemScope
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
@@ -66,6 +69,12 @@ fun PopupSheetState.showLyricsProviderSortSheet(order: List<String>, onDone: (Li
         },
     ) {
         SheetTitle(stringResource(R.string.lyrics_sort_title))
+        Text(
+            stringResource(R.string.lyrics_sort_hint),
+            color = Color.White.copy(alpha = 0.6f),
+            fontSize = 13.sp,
+            modifier = Modifier.padding(top = 6.dp),
+        )
         Spacer(Modifier.height(16.dp))
         ProviderSortList(sorted, Modifier.weight(1f, fill = false))
     }
@@ -92,6 +101,7 @@ private fun ProviderSortList(sorted: MutableState<List<String>>, modifier: Modif
         items(sorted.value, key = { it }, contentType = { "provider" }) { name ->
             ReorderableItem(reorderState, key = name) { isDragging ->
                 ProviderRow(
+                    id = name,
                     name = LyricsProviderRegistry.getDisplayName(name),
                     isDragging = isDragging,
                     onPickUp = { haptic.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate) },
@@ -105,12 +115,16 @@ private fun ProviderSortList(sorted: MutableState<List<String>>, modifier: Modif
 // one source as the mock draws it: its name on a grey pill with the three lines to grab on the right
 @Composable
 private fun ReorderableCollectionItemScope.ProviderRow(
+    id: String,
     name: String,
     isDragging: Boolean,
     onPickUp: () -> Unit,
     onDrop: () -> Unit,
 ) {
     val lift = animateFloatAsState(if (isDragging) 1f else 0f, spring(dampingRatio = 0.7f, stiffness = 600f), label = "lift")
+    // a row for a source with no switch (YouTube, modules) is always on; the switch is fixed per row, so the call stays put
+    val toggle = LyricsSourceSwitches[id]?.let { rememberPreference(it.key, it.defaultOn) }
+    val on = toggle?.value ?: true
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
@@ -128,13 +142,21 @@ private fun ReorderableCollectionItemScope.ProviderRow(
     ) {
         Text(
             text = name,
-            color = Color.White,
+            color = Color.White.copy(alpha = if (on) 1f else 0.4f),
             fontSize = 15.sp,
             fontWeight = FontWeight.SemiBold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
         )
+        // off means skipped when fetching; the row keeps its place so turning it back on needs no re-sorting
+        if (toggle != null) {
+            AppSwitch(
+                checked = on,
+                onCheckedChange = { toggle.value = it },
+                modifier = Modifier.padding(horizontal = 8.dp),
+            )
+        }
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier

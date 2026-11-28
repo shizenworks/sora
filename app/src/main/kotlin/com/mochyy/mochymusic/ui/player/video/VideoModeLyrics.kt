@@ -63,11 +63,13 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import org.koin.compose.viewmodel.koinViewModel
 import com.mochyy.mochymusic.LocalDatabase
 import com.mochyy.mochymusic.LocalPlayerConnection
 import com.mochyy.mochymusic.R
 import com.mochyy.mochymusic.constants.LyricsHighBloomKey
+import com.mochyy.mochymusic.constants.LyricsInterludeDotsKey
+import com.mochyy.mochymusic.constants.LyricsLineBounceKey
 import com.mochyy.mochymusic.constants.LyricsMotionStyle
 import com.mochyy.mochymusic.constants.LyricsMotionStyleKey
 import com.mochyy.mochymusic.db.entities.LyricsEntity.Companion.LYRICS_NOT_FOUND
@@ -149,6 +151,7 @@ internal class VideoLyrics(val lines: List<LyricsEntry>, val unsynced: Boolean, 
 internal class VideoLyricLook(
     val motion: LyricsMotionStyle,
     val highBloom: Boolean,
+    val lineBounce: Boolean,
     val blurAllowed: Boolean,
     val translating: Boolean,
 )
@@ -159,7 +162,7 @@ internal fun rememberVideoLyrics(): VideoLyrics {
     val metadata by connection.mediaMetadata.collectAsState()
     val entity by connection.currentLyrics.collectAsState(initial = null)
     // the flagship's card is what usually asks for a song's lyrics; here nothing else does
-    val loader: LyricsScreenViewModel = hiltViewModel()
+    val loader: LyricsScreenViewModel = koinViewModel()
     LaunchedEffect(metadata?.id) { metadata?.let(loader::ensureLyricsLoaded) }
     val parsed = remember(entity?.lyrics) {
         val raw = entity?.lyrics
@@ -183,11 +186,12 @@ internal fun rememberVideoLyrics(): VideoLyrics {
 internal fun rememberVideoLyricLook(): VideoLyricLook {
     val (motion) = rememberEnumPreference(LyricsMotionStyleKey, defaultValue = LyricsMotionStyle.MOTION)
     val (highBloom) = rememberPreference(LyricsHighBloomKey, defaultValue = true)
+    val (lineBounce) = rememberPreference(LyricsLineBounceKey, defaultValue = true)
     val (blurAllowed) = rememberPreference(com.mochyy.mochymusic.constants.ElementBlurKey, defaultValue = true)
     val status by LyricsTranslationHelper.status.collectAsState()
     val translating = status is LyricsTranslationHelper.TranslationStatus.Translating
-    return remember(motion, highBloom, blurAllowed, translating) {
-        VideoLyricLook(motion, highBloom, blurAllowed, translating)
+    return remember(motion, highBloom, lineBounce, blurAllowed, translating) {
+        VideoLyricLook(motion, highBloom, lineBounce, blurAllowed, translating)
     }
 }
 
@@ -231,6 +235,7 @@ internal fun VideoLyricRow(
         waveEnabled = look.motion.shaded && !suppressEffects,
         motionStyle = look.motion,
         highBloom = look.highBloom,
+        lineBounce = look.lineBounce,
         suppressEffects = suppressEffects,
     )
 }
@@ -548,7 +553,8 @@ internal fun FollowingLyrics(
         val anchorIndex by remember(lines, unsynced) {
             derivedStateOf { if (unsynced) -1 else lyricAnchorIndex(lines, progress.value.position + offsetMs) }
         }
-        val rows = remember(lines) { buildLyricRows(lines) }
+        val (interludeDots) = rememberPreference(LyricsInterludeDotsKey, defaultValue = true)
+        val rows = remember(lines, interludeDots) { buildLyricRows(lines, interludeDots) }
         val rowOfLine = remember(rows, lines) {
             IntArray(lines.size).also { map ->
                 rows.forEachIndexed { rowIndex, row -> if (row is LyricRow.Line) map[row.index] = rowIndex }

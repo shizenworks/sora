@@ -67,22 +67,27 @@ internal object StreamPcmDecoder {
             var lastPresentationUs = 0L
             while (true) {
                 coroutineContext.ensureActive()
-                if (!inputDone) {
-                    val inputIndex = codec.dequeueInputBuffer(TimeoutUs)
-                    if (inputIndex >= 0) {
-                        val input = codec.getInputBuffer(inputIndex)
-                        val size = if (input != null) extractor.readSampleData(input, 0) else -1
-                        if (size < 0 || extractor.sampleTime > limitUs) {
-                            codec.queueInputBuffer(inputIndex, 0, 0, 0L, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
-                            inputDone = true
-                            if (size < 0) reachedEnd = true
-                        } else {
-                            codec.queueInputBuffer(inputIndex, 0, size, extractor.sampleTime, 0)
-                            extractor.advance()
-                        }
+                // every free input buffer is filled before output is waited for: the decoder (in
+                // the media process) then has several packets per round trip instead of one, and
+                // this loop sleeps on its output far less often
+                var fed = false
+                while (!inputDone) {
+                    val inputIndex = codec.dequeueInputBuffer(0L)
+                    if (inputIndex < 0) break
+                    val input = codec.getInputBuffer(inputIndex)
+                    val size = if (input != null) extractor.readSampleData(input, 0) else -1
+                    if (size < 0 || extractor.sampleTime > limitUs) {
+                        codec.queueInputBuffer(inputIndex, 0, 0, 0L, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+                        inputDone = true
+                        if (size < 0) reachedEnd = true
+                    } else {
+                        codec.queueInputBuffer(inputIndex, 0, size, extractor.sampleTime, 0)
+                        extractor.advance()
                     }
+                    fed = true
                 }
-                val outputIndex = codec.dequeueOutputBuffer(info, TimeoutUs)
+                // only wait when there was nothing new to hand it
+                val outputIndex = codec.dequeueOutputBuffer(info, if (fed) 0L else TimeoutUs)
                 when {
                     outputIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
                         val out = codec.outputFormat

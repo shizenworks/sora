@@ -35,6 +35,7 @@ import java.time.temporal.ChronoUnit
 import kotlin.math.exp
 import kotlin.math.ln
 import kotlin.random.Random
+import kotlinx.datetime.toJavaLocalDateTime
 
 /** one titled row of recommendations on Home, songs and playlists side by side */
 @Serializable
@@ -100,7 +101,7 @@ class HomeRecommender(
         val scores = HashMap<String, Double>()
         val songs = HashMap<String, Song>()
         events.forEach { event ->
-            val ageDays = ChronoUnit.MINUTES.between(event.event.timestamp, now) / 1440.0
+            val ageDays = ChronoUnit.MINUTES.between(event.event.timestamp.toJavaLocalDateTime(), now) / 1440.0
             if (ageDays > 90) return@forEach
             scores.merge(event.song.id, exp(-ageDays / 14.0), Double::plus)
             songs[event.song.id] = event.song

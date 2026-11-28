@@ -48,7 +48,7 @@ sealed class Screens(
 }
 
 enum class NavigationTab {
-    HOME, SEARCH
+    HOME, SEARCH, LIBRARY
 }
 
 enum class DarkMode {

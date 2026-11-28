@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="japanese_pack_title">Japanese lyrics dictionary</string>
+    <string name="japanese_pack_description">Download 13 MB for offline kanji readings. Devices set to the Japan region download it automatically.</string>
+    <string name="japanese_pack_checking">Checking dictionary</string>
+    <string name="japanese_pack_preparing">Preparing dictionary</string>
+    <string name="japanese_pack_progress">Downloading %1$d%%</string>
+    <string name="japanese_pack_installed">Available offline</string>
+    <string name="japanese_pack_removing">Removing dictionary</string>
+    <string name="japanese_pack_invalid">The dictionary failed verification. Download it again.</string>
+    <string name="japanese_pack_failed">Couldn’t download the dictionary</string>
+    <string name="japanese_pack_remove_failed">Couldn’t remove the dictionary</string>
+    <string name="japanese_pack_download">Download</string>
+    <string name="japanese_pack_remove">Remove</string>
+    <string name="japanese_pack_cancel">Cancel</string>
+    <string name="japanese_pack_retry">Retry</string>
+</resources>

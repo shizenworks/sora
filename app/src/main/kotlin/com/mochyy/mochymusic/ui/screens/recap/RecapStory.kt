@@ -101,6 +101,7 @@ import coil3.imageLoader
 import coil3.request.ImageRequest
 import com.mochyy.mochymusic.LocalPlayerConnection
 import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.ui.component.BlurEffectCache
 import com.mochyy.mochymusic.ui.screens.setup.onboarding.IdCardAspect
 import com.mochyy.mochymusic.ui.screens.setup.onboarding.ProfileIdCard
 import com.mochyy.mochymusic.ui.theme.InterFontFamily
@@ -123,27 +124,30 @@ import kotlin.math.max
 
 @Immutable
 internal class RecapStoryData(
-    val stats: ListeningStats,
-    val monthProgress: Int,
+    override val stats: ListeningStats,
+    override val monthProgress: Int,
     val username: String,
     val photo: Any?,
     val cardNumber: String,
     val joinedText: String,
     val joinedDate: LocalDate,
-    val allTimeMs: Long,
-) {
-    val name: String get() = username.trim().ifEmpty { "you" }
+    override val allTimeMs: Long,
+) : RecapStorySource {
+    override val name: String get() = username.trim().ifEmpty { "you" }
     /** "October" - or "2026" when a forced recap had to fall back to the whole year. */
-    val monthName: String get() = stats.range.label
-    val artists: List<RecapArtist> = stats.topArtists.take(10)
-    val songs: List<RecapSong> = stats.topSongs
-    val heroArtist: RecapArtist? = artists.firstOrNull()
-    val heroSong: RecapSong? = songs.firstOrNull()
+    override val monthName: String get() = stats.range.label
+    override val artists: List<RecapArtist> = stats.topArtists.take(10)
+    override val songs: List<RecapSong> = stats.topSongs
+    override val heroArtist: RecapArtist? = artists.firstOrNull()
+    override val heroSong: RecapSong? = songs.firstOrNull()
 
     /** Monday = 0. */
-    val favouriteDay: Int = stats.weekdayMs.indices.maxByOrNull { stats.weekdayMs[it] } ?: 0
-    val favouriteDayMs: Long = stats.weekdayMs.getOrElse(favouriteDay) { 0L }
-    val runnerUpMs: Long = stats.weekdayMs.filterIndexed { i, _ -> i != favouriteDay }.maxOrNull() ?: 0L
+    override val favouriteDay: Int = stats.weekdayMs.indices.maxByOrNull { stats.weekdayMs[it] } ?: 0
+    override val favouriteDayMs: Long = stats.weekdayMs.getOrElse(favouriteDay) { 0L }
+    override val runnerUpMs: Long = stats.weekdayMs.filterIndexed { i, _ -> i != favouriteDay }.maxOrNull() ?: 0L
+
+    // the journey page shows the joined date with DateLong, which is a java.time formatter
+    override val joinedDateText: String = DateLong.format(joinedDate)
 }
 
 /** Screen-space (px) positions of the page the story starts from and goes back into. */
@@ -157,143 +161,7 @@ internal class RecapAnchors(
     val topInset: Float,
 )
 
-internal const val StoryPageCount = 11
-internal const val P_HEY = 0
-internal const val P_JOURNEY = 1
-internal const val P_MONTH = 2
-internal const val P_WEEKDAY = 3
-internal const val P_ARTISTS = 4
-internal const val P_ARTIST = 5
-internal const val P_SONGS = 6
-internal const val P_MELODY = 7
-internal const val P_SONG = 8
-internal const val P_RECEIPT = 9
-internal const val P_END = 10
-
-internal val StoryDark = Color(0xFF0C0C0C)
-internal val HeaderGrey = Color(0xFF1C1C1C)
-internal val StoryTextDark = Color(0xFF111111)
-internal val HeaderText = Color(0xFF272727)
-internal val StoryDots = Color(0xFF171717)
-internal val HeaderDots = Color(0xFF262626)
-
-internal val Emphasized: Easing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
 internal val EmphasizedAccelerate: Easing = CubicBezierEasing(0.3f, 0f, 0.8f, 0.15f)
-
-internal suspend fun Animatable<Float, AnimationVector1D>.go(target: Float, ms: Int, easing: Easing = Emphasized, delayMs: Int = 0) {
-    animateTo(target, tween(ms, delayMs, easing))
-}
-
-private suspend fun together(vararg blocks: suspend CoroutineScope.() -> Unit) = coroutineScope {
-    blocks.forEach { launch(block = it) }
-}
-
-@Stable
-internal class PageAnim {
-    val enter = Animatable(0f)
-    val exit = Animatable(0f)
-}
-
-/** Sizes on the actual screen, plus a mapping from the 852dp-tall mock. */
-@Immutable
-internal class StoryGeometry(val width: Float, val height: Float, val top: Float, val density: Float) {
-    fun dp(v: Float): Float = v * density
-
-    /** A y from the mock (an 852dp-tall phone), proportionally on this one. */
-    fun fy(mockDp: Float): Float = mockDp / 852f * height
-
-    val inset: Float get() = dp(36f)
-
-    /** Avatar centre x, centre y and diameter for a page. */
-    fun avatar(page: Int): FloatArray = when (page) {
-        P_HEY -> floatArrayOf(width / 2f, height * 0.43f, dp(127f))
-        P_JOURNEY -> slot(dp(33f), top + dp(95f), dp(91f))
-        P_MONTH -> slot(dp(33f), top + dp(106f), dp(143f))
-        P_WEEKDAY -> slot(dp(33f), top + dp(91f), dp(85f))
-        else -> slot(inset, top + dp(31f), dp(36f))
-    }
-
-    private fun slot(left: Float, top: Float, d: Float) = floatArrayOf(left + d / 2f, top + d / 2f, d)
-}
-
-/** Every animated value that outlives a single page. */
-@Stable
-internal class StoryState(val geo: StoryGeometry, startCard: Rect) {
-    val reveal = Animatable(0f)
-    val backdrop = Animatable(1f)
-
-    /** 1 = the whole screen; 0 = closed down to a horizontal band. */
-    val band = Animatable(1f)
-
-    /** 0 = the whole screen; 1 = clipped to the page header (the way back). */
-    val headerClip = Animatable(0f)
-
-    /** Colours: 0 = story dark, 1 = page header grey. */
-    val toHeader = Animatable(0f)
-    val mesh = Animatable(0f)
-    val dots = Animatable(1f)
-    var paletteFrom by mutableStateOf(RecapPalette.Fallback)
-    var paletteTo by mutableStateOf(RecapPalette.Fallback)
-    val paletteMix = Animatable(1f)
-
-    val text = GiantTextState("MOCHY", half = 4, filledRows = 0..0).also { it.color = { textColor() } }
-    val logoSide = Animatable(0f)
-
-    val cardX = Animatable(startCard.left)
-    val cardY = Animatable(startCard.top)
-    val cardRot = Animatable(0f)
-    val cardAlpha = Animatable(1f)
-    var cardBack by mutableStateOf(true)
-    val scan = Animatable(0f)
-
-    val avX = Animatable(geo.avatar(P_HEY)[0])
-    val avY = Animatable(geo.avatar(P_HEY)[1])
-    val avD = Animatable(geo.avatar(P_HEY)[2])
-    val avRing = Animatable(0f)
-    val avRingAlpha = Animatable(1f)
-    val avAlpha = Animatable(0f)
-    val avPop = Animatable(0f)
-
-    val pages = List(StoryPageCount) { PageAnim() }
-    var page by mutableIntStateOf(-1)
-    var swipeOpen by mutableStateOf(false)
-    var dragX by mutableFloatStateOf(0f)
-
-    // artists
-    val spin = Animatable(-2.6f)
-    val spinGlow = Animatable(0f)
-    val heroArtist = Animatable(0f)
-
-    // songs
-    val gridDrift = Animatable(0f)
-    val gridPick = Animatable(0f)
-    val heroCover = Animatable(0f)
-    val heroCoverUp = Animatable(0f)
-
-    fun palette(): RecapPalette = lerp(paletteFrom, paletteTo, paletteMix.value)
-
-    fun backgroundColor(): Color = lerp(StoryDark, HeaderGrey, toHeader.value)
-
-    fun textColor(): Color {
-        val dark = lerp(StoryTextDark, HeaderText, toHeader.value)
-        return lerp(dark, Color.White.copy(alpha = 0.06f), mesh.value)
-    }
-
-    fun dotColor(): Color = lerp(StoryDots, HeaderDots, toHeader.value)
-
-    suspend fun crossfadePalette(to: RecapPalette, ms: Int) {
-        paletteFrom = palette()
-        paletteTo = to
-        paletteMix.snapTo(0f)
-        paletteMix.go(1f, ms, FastOutSlowInEasing)
-    }
-
-    suspend fun avatarTo(page: Int, ms: Int = 900, delayMs: Int = 0) = together(
-        { avX.go(geo.avatar(page)[0], ms, delayMs = delayMs) },
-        { avY.go(geo.avatar(page)[1], ms, delayMs = delayMs) },
-        { avD.go(geo.avatar(page)[2], ms, delayMs = delayMs) },
-    )
-}
 
 internal enum class StoryGesture { SwipeLeft, SwipeDown, Tap }
 
@@ -450,7 +318,7 @@ private fun RecapStory(
         val startCard = remember(o) { local(anchors.expandedCard) }
         val headerCard = remember(o) { local(anchors.headerCard) }
         val headerBottom = anchors.headerHeight - o.y
-        val s = remember(geo) { StoryState(geo, startCard) }
+        val s = remember(geo) { StoryState(geo, startCard, cardAspect = IdCardAspect, elementBlur = { radius -> BlurEffectCache.element(radius) }) }
         val director = remember(s) {
             StoryDirector(s, data, gestures, snippet, haptics::performHapticFeedback, startCard, headerCard)
         }
@@ -579,7 +447,7 @@ private fun RecapStory(
                         .recapDots(color = { s.dotColor() }, alpha = { s.dots.value }),
                 )
 
-                StoryPages(s, data, time)
+                StoryPages(s, data, time, textColorsOf = { it.textColors() })
 
                 StoryLogo(s)
                 StoryAvatar(s, data)

@@ -48,7 +48,7 @@ class CarSongsScreen(
         val data = loaded ?: return SectionedItemTemplate.Builder().setHeader(header.build()).setLoading(true).build()
         if (data.songs.isNotEmpty()) header.addEndHeaderAction(shuffle(data.songs))
         val rows = data.songs.mapIndexed { index, song ->
-            songRow(song, data.covers[index]) { app.play(app.catalog.listFrom(title, data.songs, index)) }
+            songRow(song, data.covers[index]) { app.play(app.catalog.listFrom(title, data.songs, index), startIsChoice = true) }
         }
         val empty = app.string(if (data.failed) R.string.car_couldnt_load else R.string.car_list_empty)
         return SectionedItemTemplate.Builder()

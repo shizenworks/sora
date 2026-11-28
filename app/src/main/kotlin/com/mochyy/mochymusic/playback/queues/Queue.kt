@@ -28,22 +28,18 @@ interface Queue {
         val position: Long = 0L,
     ) {
         fun filterExplicit(enabled: Boolean = true) =
-            if (enabled) {
-                copy(
-                    items = items.filterExplicit(),
-                )
-            } else {
-                this
-            }
+            if (enabled) without { it.metadata?.explicit == true } else this
 
         fun filterVideoSongs(disableVideos: Boolean = false) =
-            if (disableVideos) {
-                copy(
-                    items = items.filterVideoSongs(true),
-                )
-            } else {
-                this
-            }
+            if (disableVideos) without { it.metadata?.isVideoSong == true } else this
+
+        // the song that was picked always stays (it was asked for by name), and the start index moves with it,
+        // so taking songs out before it can't start a different one
+        private fun without(hidden: (MediaItem) -> Boolean): Status {
+            val picked = items.getOrNull(mediaItemIndex)
+            val kept = items.filterIndexed { index, item -> index == mediaItemIndex || !hidden(item) }
+            return copy(items = kept, mediaItemIndex = picked?.let { kept.indexOf(it) }?.takeIf { it >= 0 } ?: 0)
+        }
     }
 }
 

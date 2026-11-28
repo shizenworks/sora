@@ -16,6 +16,7 @@ import androidx.room.migration.AutoMigrationSpec
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.sqlite.db.SupportSQLiteOpenHelper
+import com.mochyy.mochymusic.constants.ArtistSongSortType
 import com.mochyy.mochymusic.db.daos.SpeedDialDao
 import com.mochyy.mochymusic.db.entities.AlbumArtistMap
 import com.mochyy.mochymusic.db.entities.AlbumEntity
@@ -37,6 +38,7 @@ import com.mochyy.mochymusic.db.entities.RecognitionHistory
 import com.mochyy.mochymusic.db.entities.RelatedSongMap
 import com.mochyy.mochymusic.db.entities.SearchHistory
 import com.mochyy.mochymusic.db.entities.SetVideoIdEntity
+import com.mochyy.mochymusic.db.entities.Song
 import com.mochyy.mochymusic.db.entities.SongAlbumMap
 import com.mochyy.mochymusic.db.entities.SongArtistMap
 import com.mochyy.mochymusic.db.entities.SongEdit
@@ -50,12 +52,30 @@ import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneOffset
 import java.util.Date
+import kotlinx.coroutines.flow.Flow
+import kotlinx.datetime.toKotlinLocalDateTime
 
 class MusicDatabase(
     private val delegate: InternalDatabase,
-) : DatabaseDao by delegate.dao {
-    val speedDialDao: SpeedDialDao
+) : DatabaseDao by delegate.dao, MochyDatabase {
+    // the shared side of the database: screens and ViewModels in :shared ask for these, the same DAOs
+    // DatabaseDao already delegates to this wrapper
+    override val songDao: SongDao
+        get() = delegate.songDao
+
+    override val playlistDao: PlaylistDao
+        get() = delegate.playlistDao
+
+    override val historyDao: HistoryDao
+        get() = delegate.historyDao
+
+    override val speedDialDao: SpeedDialDao
         get() = delegate.speedDialDao
+
+    // suspend versions of the blocking queries, for callers already in a coroutine
+    override val suspendingDao: SuspendingDao
+        get() = delegate.suspendingDao
+
 
     /**
      * Pins [item], evicting the oldest pin first if that would push the count past
@@ -106,9 +126,6 @@ class MusicDatabase(
     fun close() = delegate.close()
 }
 
-// bump this with every schema change and add its migration to AllMigrations, the import checks old exports against it too
-const val MusicDatabaseVersion = 46
-
 @Database(
     entities = [
         SongEntity::class,
@@ -142,12 +159,17 @@ const val MusicDatabaseVersion = 46
         PlaylistSongMapPreview::class,
     ],
     version = MusicDatabaseVersion,
-    exportSchema = false
+    // CI compares app/schemas to what this compiles to, so the database can move between modules without a column changing
+    exportSchema = true,
 )
 @TypeConverters(Converters::class)
-abstract class InternalDatabase : RoomDatabase() {
+abstract class InternalDatabase : RoomDatabase(), MochyDatabase {
     abstract val dao: DatabaseDao
-    abstract val speedDialDao: SpeedDialDao
+    abstract override val speedDialDao: SpeedDialDao
+    abstract override val suspendingDao: SuspendingDao
+    override val songDao: SongDao get() = dao
+    override val playlistDao: PlaylistDao get() = dao
+    override val historyDao: HistoryDao get() = dao
 
     companion object {
         const val DB_NAME = "mochy.db"
@@ -369,8 +391,8 @@ val MIGRATION_1_2 =
                         "totalPlayTime" to song.totalPlayTime,
                         "isTrash" to false,
                         "download_state" to song.downloadState,
-                        "create_date" to converters.dateToTimestamp(song.createDate),
-                        "modify_date" to converters.dateToTimestamp(song.modifyDate),
+                        "create_date" to converters.dateToTimestamp(song.createDate.toKotlinLocalDateTime()),
+                        "modify_date" to converters.dateToTimestamp(song.modifyDate.toKotlinLocalDateTime()),
                     ),
                 )
             }
@@ -392,8 +414,8 @@ val MIGRATION_1_2 =
                     contentValuesOf(
                         "id" to playlist.id,
                         "name" to playlist.name,
-                        "createDate" to converters.dateToTimestamp(LocalDateTime.now()),
-                        "lastUpdateTime" to converters.dateToTimestamp(LocalDateTime.now()),
+                        "createDate" to converters.dateToTimestamp(nowLocal()),
+                        "lastUpdateTime" to converters.dateToTimestamp(nowLocal()),
                     ),
                 )
             }
@@ -573,9 +595,9 @@ class Migration12To13 : AutoMigrationSpec {
 class Migration13To14 : AutoMigrationSpec {
     @SuppressLint("Range")
     override fun onPostMigrate(db: SupportSQLiteDatabase) {
-        db.execSQL("UPDATE playlist SET createdAt = '${Converters().dateToTimestamp(LocalDateTime.now())}'")
+        db.execSQL("UPDATE playlist SET createdAt = '${Converters().dateToTimestamp(nowLocal())}'")
         db.execSQL(
-            "UPDATE playlist SET lastUpdateTime = '${Converters().dateToTimestamp(LocalDateTime.now())}'"
+            "UPDATE playlist SET lastUpdateTime = '${Converters().dateToTimestamp(nowLocal())}'"
         )
     }
 }

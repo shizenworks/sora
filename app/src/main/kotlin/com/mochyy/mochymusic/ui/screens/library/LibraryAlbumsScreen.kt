@@ -8,7 +8,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import org.koin.compose.viewmodel.koinViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.mochyy.mochymusic.LocalPlayerConnection
@@ -53,7 +53,7 @@ private fun ImportedAlbumsScreen(
     modifier: Modifier,
     pureBlack: Boolean,
 ) {
-    val viewModel: LibraryImportedViewModel = hiltViewModel()
+    val viewModel: LibraryImportedViewModel = koinViewModel()
     val albums by viewModel.albums.collectAsState()
     val entries = remember(albums) { albums.toGridEntries() }
 
@@ -88,7 +88,7 @@ private fun ShelfAlbumsScreen(
     modifier: Modifier,
     pureBlack: Boolean,
 ) {
-    val viewModel: LibraryHomeViewModel = hiltViewModel()
+    val viewModel: LibraryHomeViewModel = koinViewModel()
     // with the lifecycle: the Cached shelf looks at the cache every couple of seconds while watched
     val albums by viewModel.shelf(shelf).albums.collectAsStateWithLifecycle()
     val playerConnection = LocalPlayerConnection.current ?: return

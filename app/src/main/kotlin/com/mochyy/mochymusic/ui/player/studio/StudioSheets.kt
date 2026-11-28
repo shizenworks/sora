@@ -140,7 +140,7 @@ fun StudioSheets(
 
             StudioSheet.SEEKBAR -> OptionSheet(stringResource(R.string.ps_studio_seek_bar)) {
                 SeekBarStyle.entries.forEach { style ->
-                    OptionRow(selected = style == seekBarStyle, onClick = { onSeekBarStyle(style) }, caption = stringResource(style.labelRes)) {
+                    OptionRow(selected = style == seekBarStyle, onClick = { onSeekBarStyle(style) }, caption = org.jetbrains.compose.resources.stringResource(style.labelRes)) {
                         Box(Modifier.fillMaxWidth().height(28.dp)) {
                             SeekBarTrack(
                                 style = style,

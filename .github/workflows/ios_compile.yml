@@ -1,0 +1,72 @@
+name: iOS compile
+
+# Compiles the shared modules for the iOS simulator, links the Shared framework and builds the Swift host.
+# Linux skips iOS targets, so this is the only signal for iosMain.
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [dev]
+
+concurrency:
+  group: ios-compile-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ios:
+    name: iOS simulator compile and Swift type-check
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-java@v5
+        with:
+          java-version: 21
+          distribution: temurin
+
+      - uses: gradle/actions/setup-gradle@v5
+        with:
+          cache-read-only: ${{ github.event_name == 'pull_request' }}
+
+      - name: Restore the Kotlin/Native cache
+        uses: actions/cache@v4
+        continue-on-error: true
+        with:
+          path: ~/.konan
+          key: konan-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('gradle/libs.versions.toml') }}
+
+      - run: chmod +x gradlew
+
+      # Configure-on-demand keeps Gradle from configuring :app (and its pinned NDK) for iOS-only tasks.
+      - name: Compile the shared modules for the iOS simulator
+        run: >-
+          ./gradlew --console=plain -Dorg.gradle.configureondemand=true --continue
+          :providers:innertube:compileKotlinIosSimulatorArm64
+          :shared:compileKotlinIosSimulatorArm64
+
+      - name: Link the simulator framework
+        run: ./gradlew --console=plain -Dorg.gradle.configureondemand=true :shared:linkDebugFrameworkIosSimulatorArm64
+
+      - name: Type-check the Swift host against the framework
+        shell: bash
+        run: |
+          set -euo pipefail
+          FRAMEWORKS="shared/build/bin/iosSimulatorArm64/debugFramework"
+          test -d "$FRAMEWORKS/Shared.framework"
+          xcrun --sdk iphonesimulator swiftc -typecheck -parse-as-library \
+            -swift-version 5 \
+            -target arm64-apple-ios17.0-simulator \
+            -F "$FRAMEWORKS" \
+            iosApp/*.swift
+
+      - name: Build the simulator app with Xcode
+        shell: bash
+        run: |
+          set -euo pipefail
+          derived_data="$RUNNER_TEMP/mochy-ios"
+          xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp \
+            -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$derived_data" CODE_SIGNING_ALLOWED=NO build
+          app="$derived_data/Build/Products/Debug-iphonesimulator/Mochy.app"
+          test -x "$app/Mochy"
+          test -n "$(find "$app" -name inter_regular.ttf -print -quit)"

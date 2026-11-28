@@ -1,7 +1,6 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import com.android.build.api.dsl.ApplicationExtension
 import java.util.Properties
-import java.security.KeyStore
 import java.security.MessageDigest
 import java.net.URL
 
@@ -20,6 +19,9 @@ plugins {
 }
 
 extensions.configure<ApplicationExtension> {
+    val compactApk = providers.gradleProperty("mochy.compactApk").map(String::toBoolean).getOrElse(true)
+    val compressNativeLibs = providers.gradleProperty("mochy.compressNativeLibs").map(String::toBoolean).getOrElse(false)
+
     namespace = "com.mochyy.mochymusic"
     compileSdk = 37
     ndkVersion = "27.0.12077973"
@@ -33,6 +35,7 @@ extensions.configure<ApplicationExtension> {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
+        buildConfigField("boolean", "COMPACT_APK", compactApk.toString())
 
         // LastFM API keys from local.properties locally, GitHub Secrets on CI. never commit them
         val lastFmKey = localProperties.getProperty("LASTFM_API_KEY") ?: System.getenv("LASTFM_API_KEY") ?: ""
@@ -40,77 +43,6 @@ extensions.configure<ApplicationExtension> {
 
         buildConfigField("String", "LASTFM_API_KEY", "\"$lastFmKey\"")
         buildConfigField("String", "LASTFM_SECRET", "\"$lastFmSecret\"")
-
-        // the module store key stays out of BuildConfig/DEX and goes straight into a generated native C++ header with a per-build mask
-        val storeKey = localProperties.getProperty("MODULE_STORE_KEY") ?: System.getenv("MODULE_STORE_KEY") ?: ""
-        val hasReleaseKeystore = System.getenv("STORE_PASSWORD") != null &&
-            System.getenv("KEY_ALIAS") != null &&
-            System.getenv("KEY_PASSWORD") != null &&
-            file("keystore/release.keystore").exists()
-        val expectedCertBytes: ByteArray = when {
-            hasReleaseKeystore -> runCatching {
-                val ks = KeyStore.getInstance(KeyStore.getDefaultType())
-                file("keystore/release.keystore").inputStream().use { ks.load(it, System.getenv("STORE_PASSWORD").toCharArray()) }
-                val cert = ks.getCertificate(System.getenv("KEY_ALIAS"))
-                MessageDigest.getInstance("SHA-256").digest(cert.encoded)
-            }.getOrDefault(ByteArray(0))
-            else -> (localProperties.getProperty("OFFICIAL_SIGNING_CERT_SHA256") ?: System.getenv("OFFICIAL_SIGNING_CERT_SHA256") ?: "")
-                .trim().replace(":", "").lowercase()
-                .takeIf { it.length == 64 && it.all { c -> c in '0'..'9' || c in 'a'..'f' } }
-                ?.chunked(2)?.map { it.toInt(16).toByte() }?.toByteArray() ?: ByteArray(0)
-        }
-        val storeKeyBytes = storeKey.toByteArray(Charsets.UTF_8)
-        val storeGuardDir = layout.buildDirectory.dir("generated/store_guard").get().asFile
-        storeGuardDir.mkdirs()
-        fun deriveMask(seed: String, length: Int): ByteArray {
-            if (length <= 0) return ByteArray(0)
-            val out = ByteArray(length)
-            val sha = MessageDigest.getInstance("SHA-256")
-            var offset = 0
-            var block = 0
-            while (offset < length) {
-                val digest = sha.digest("$seed#$block".toByteArray(Charsets.UTF_8))
-                val take = minOf(digest.size, length - offset)
-                System.arraycopy(digest, 0, out, offset, take)
-                offset += take
-                block++
-            }
-            return out
-        }
-        fun toCArray(bytes: ByteArray): String =
-            if (bytes.isEmpty()) "0" else bytes.joinToString(", ") { "0x%02xu".format(it.toInt() and 0xff) }
-        val keyMask = deriveMask("store-key:${storeKey.length}:${storeKey.hashCode()}", storeKeyBytes.size)
-        val maskedKey = ByteArray(storeKeyBytes.size) { i ->
-            ((storeKeyBytes[i].toInt() xor keyMask[i].toInt() xor (i * 0x5A + 0xA5)) and 0xff).toByte()
-        }
-        val certMask = deriveMask("store-cert:${expectedCertBytes.contentHashCode()}", 32)
-        val maskedCert = ByteArray(32) { i ->
-            val raw = if (i < expectedCertBytes.size) expectedCertBytes[i].toInt() else 0
-            ((raw xor certMask[i].toInt() xor (i * 0x3D + 0x71)) and 0xff).toByte()
-        }
-        val headerContent = buildString {
-            appendLine("#pragma once")
-            appendLine("#include <cstddef>")
-            appendLine("#include <cstdint>")
-            appendLine("namespace {")
-            appendLine("constexpr size_t kStoreKeyLen = ${storeKeyBytes.size}u;")
-            appendLine("constexpr uint8_t kStoreMask[${maxOf(1, keyMask.size)}] = { ${toCArray(keyMask)} };")
-            appendLine("constexpr uint8_t kStoreData[${maxOf(1, maskedKey.size)}] = { ${toCArray(maskedKey)} };")
-            appendLine("constexpr int kRequireReleasePackage = ${if (hasReleaseKeystore) 1 else 0};")
-            appendLine("constexpr int kHasExpectedCert = ${if (expectedCertBytes.size == 32) 1 else 0};")
-            appendLine("constexpr uint8_t kExpectedCertMask[32] = { ${toCArray(certMask)} };")
-            appendLine("constexpr uint8_t kExpectedCertData[32] = { ${toCArray(maskedCert)} };")
-            appendLine("}")
-        }
-        val headerFile = File(storeGuardDir, "store_guard_data.h")
-        if (!headerFile.exists() || headerFile.readText() != headerContent) {
-            headerFile.writeText(headerContent)
-        }
-        externalNativeBuild {
-            cmake {
-                arguments += "-DSTORE_GUARD_DIR=${storeGuardDir.absolutePath}"
-            }
-        }
 
         // Libre.fm the same way. It takes any 32-character key and never checks the secret, so a
         // build without its own (a fork, a CI run with no secrets) gets one made from the app id
@@ -345,13 +277,15 @@ extensions.configure<ApplicationExtension> {
 
     packaging {
         jniLibs {
-            useLegacyPackaging = false
+            // Sideloaders can choose a smaller download with native libraries extracted at install time.
+            useLegacyPackaging = compressNativeLibs
             keepDebugSymbols += listOf(
                 "**/libandroidx.graphics.path.so",
                 "**/libdatastore_shared_counter.so"
             )
         }
         resources {
+            if (compactApk) excludes += "com/atilika/kuromoji/ipadic/*.bin"
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
             excludes += "META-INF/NOTICE.md"
             excludes += "META-INF/CONTRIBUTORS.md"
@@ -445,6 +379,7 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach 
 }
 
 dependencies {
+    implementation(libs.kotlinx.datetime)
     implementation(libs.guava)
     implementation(libs.coroutines.guava)
     implementation(libs.concurrent.futures)
@@ -498,6 +433,8 @@ dependencies {
     implementation(libs.media3.okhttp)
     // ffmpeg decodes alac (and flac, opus...) on phones that have no decoder of their own for it
     implementation(libs.media3.ffmpeg)
+    // libopus in-process, as metrolist does: youtube serves opus, and jellyfin's ffmpeg build has no opus decoder
+    implementation(project(":opusDecoder"))
     // song share videos: decode the background, mix in the song, encode the mp4
     implementation(libs.media3.transformer)
     implementation(libs.media3.effect)
@@ -530,6 +467,7 @@ dependencies {
     implementation(project(":providers:applecanvas"))
     implementation(project(":providers:paxsenixlyrics"))
     implementation(project(":providers:directlyrics"))
+    implementation(project(":shared"))
     implementation(project(":providers:musixmatch"))
     implementation(project(":providers:genius"))
     implementation(project(":providers:wikipedia"))

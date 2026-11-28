@@ -26,8 +26,6 @@ import com.mochyy.mochymusic.models.TransferState
 import com.mochyy.mochymusic.playback.DownloadUtil
 import com.mochyy.mochymusic.playback.ExoDownloadService
 import com.mochyy.mochymusic.ui.component.TopToaster
-import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -37,7 +35,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
-import javax.inject.Inject
 
 /** A storage scan for the Add music sheet. */
 sealed interface DeviceScan {
@@ -57,9 +54,8 @@ private const val LongNoticeMs = 5_000L
  * behind Add music, and the Manage sheets' undo and delete actions. Results are told with a toast
  * at the top, since the sheet that asked has usually closed by then.
  */
-@HiltViewModel
-class LibraryImportViewModel @Inject constructor(
-    @ApplicationContext private val context: Context,
+class LibraryImportViewModel constructor(
+    private val context: Context,
     private val database: MusicDatabase,
     private val localImport: LocalImportService,
     private val history: ImportHistory,

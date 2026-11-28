@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.media3.common.Player
 import com.mochyy.mochymusic.constants.PlayerHorizontalPadding
+import com.mochyy.mochymusic.constants.SwipeUpOpensQueueKey
 import com.mochyy.mochymusic.extensions.toggleRepeatMode
 import com.mochyy.mochymusic.ui.component.BlurEffectCache
 import androidx.compose.foundation.layout.Column
@@ -528,8 +529,8 @@ private fun PlayerSheet(
         com.mochyy.mochymusic.ui.player.styles.StyleActions(
             onOtherMenu = {
                 // the styles that perform the lyrics get the lyrics tools too: provider, translation
-                menuFromLyrics = currentPlayerStyleForStudio == PlayerStyle.POSTER ||
-                    currentPlayerStyleForStudio == PlayerStyle.LYRICS
+                menuFromLyrics =
+                    currentPlayerStyleForStudio.traits.menuFromLyrics
                 showActionMenu = true
             },
             onEditPlayer = openStudio,
@@ -549,6 +550,7 @@ private fun PlayerSheet(
             },
             onClose = { state.collapseSoft() },
             onQueue = { styleQueueOpen = true },
+            onSleepTimer = { showSleepTimer = true },
             turn = if (onTv) null else styleTurn,
         )
     }
@@ -747,6 +749,8 @@ private fun PlayerSheet(
         val currentLandscapeFlagship by androidx.compose.runtime.rememberUpdatedState(landscapeFlagship)
         val currentCardShown by androidx.compose.runtime.rememberUpdatedState(showDeck)
         val currentCoverStyle by androidx.compose.runtime.rememberUpdatedState(shownCoverStyle)
+        val (swipeUpOpensQueue) = rememberPreference(SwipeUpOpensQueueKey, defaultValue = false)
+        val currentSwipeUpOpensQueue by androidx.compose.runtime.rememberUpdatedState(swipeUpOpensQueue)
         val closeStripBottom = with(density) { (statusBarTopInset + PlayerCloseStrip).toPx() }
         val currentCloseStripBottom by androidx.compose.runtime.rememberUpdatedState(closeStripBottom)
         val swipe = remember(transition, deck, morph, screenHeightPx, density) {
@@ -796,7 +800,13 @@ private fun PlayerSheet(
                         transition.page == PlayerPage.NONE ->
                             if (
                                 up && aroundControls(start) &&
-                                transition.beginDrag(if (currentCardShown) deck.focusedPage else PlayerPage.LYRICS)
+                                transition.beginDrag(
+                                    when {
+                                        currentSwipeUpOpensQueue -> PlayerPage.QUEUE
+                                        currentCardShown -> deck.focusedPage
+                                        else -> PlayerPage.LYRICS
+                                    },
+                                )
                             ) {
                                 PlayerSwipe.PULL
                             } else {
@@ -1124,12 +1134,13 @@ private fun PlayerSheet(
                     onCoveredChange = { styleQueueCovered = it },
                 )
                 // the ipod, the full video mode and the bedside each have their own close, a bar over them would just be in the way
-                if (!onTv && playerStyle != PlayerStyle.IPOD && playerStyle != PlayerStyle.VIDEO && !playerStyle.isBedside) PlayerHandle(
+                if (!onTv && playerStyle.traits.showsHandle) PlayerHandle(
                     state = handleState,
                     sheet = state,
                     statusBarTop = statusBarTopInset,
                     enabled = { !studio.engaged },
                     modifier = Modifier.align(Alignment.TopCenter),
+                    playing = transportState.isPlaying,
                 )
                 return@BottomSheet
             }
@@ -1241,6 +1252,7 @@ private fun PlayerSheet(
                     statusBarTop = 0.dp,
                     enabled = { !studio.engaged },
                     modifier = Modifier.align(Alignment.TopCenter),
+                    playing = transportState.isPlaying,
                 )
                 return@BottomSheet
             }
@@ -1333,8 +1345,8 @@ private fun PlayerSheet(
                 screenWidth = screenWidth,
                 // the Turntable's title is set differently, so its header title fades in over it
                 handOff = !isTurntable,
-                // the queue page's heart sits at the header's end; the title fades out before it
-                endRoom = { queuePageProgress },
+                // The lyrics menu and the queue's heart both sit at the header's end.
+                endRoom = { maxOf(lyricsPageProgress, queuePageProgress) },
             )
             // Above the title after a like, moving with it into the lyrics/queue header.
             // the crossmix flag flips at song changes; read in here it recomposes the label, not the player
@@ -1793,6 +1805,7 @@ private fun PlayerSheet(
                 statusBarTop = statusBarTopInset,
                 enabled = { !studio.engaged },
                 modifier = Modifier.align(Alignment.TopCenter),
+                playing = transportState.isPlaying,
             )
         }
 

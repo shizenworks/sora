@@ -11,7 +11,6 @@ import com.mochyy.mochymusic.db.MusicDatabase
 import com.mochyy.mochymusic.utils.reportException
 import com.mochyy.mochymusic.utils.ArtistImageResolver
 import com.mochyy.mochymusic.utils.ArtistPageCache
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.first
@@ -20,12 +19,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import com.mochyy.mochymusic.utils.Wikipedia
 import com.mochyy.mochymusic.utils.AppleMusicAboutAlbum
-import javax.inject.Inject
 
-@HiltViewModel
-class AlbumViewModel
-@Inject
-constructor(
+// Koin builds it (di/koin/OnlineKoin.kt); album saves and YouTube lookups stay on Android's MusicDatabase
+class AlbumViewModel(
     private val database: MusicDatabase,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {

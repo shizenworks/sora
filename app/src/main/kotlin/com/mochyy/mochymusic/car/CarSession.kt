@@ -24,6 +24,7 @@ class CarSession(
     private val lyricsHelper: LyricsHelper,
     private val pairing: PhonePairing,
     private val link: PhoneLinkHost,
+    private val gate: CarStreamGate,
 ) : Session() {
     private var app: CarApp? = null
 
@@ -34,7 +35,7 @@ class CarSession(
             carContext = context,
             scope = lifecycleScope,
             playback = playback,
-            catalog = CarCatalog(context.applicationContext, database),
+            catalog = CarCatalog(context.applicationContext, database, gate),
             images = CarImages(context.applicationContext),
             lyrics = CarLyricsSource(database, lyricsHelper),
             pairing = pairing,

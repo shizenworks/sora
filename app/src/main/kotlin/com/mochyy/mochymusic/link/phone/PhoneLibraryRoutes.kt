@@ -12,15 +12,16 @@ import androidx.media3.exoplayer.offline.Download
 import com.mochyy.mochymusic.db.InternalDatabase
 import com.mochyy.mochymusic.db.MusicDatabase
 import com.mochyy.mochymusic.importer.transfer.snapshotDatabase
+import com.mochyy.mochymusic.link.LinkOutput
 import com.mochyy.mochymusic.link.LinkRequest
 import com.mochyy.mochymusic.link.LinkResponse
 import com.mochyy.mochymusic.link.LinkRows
+import com.mochyy.mochymusic.link.asOutputStream
 import com.mochyy.mochymusic.playback.DownloadUtil
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 import java.io.FileInputStream
-import java.io.OutputStream
 import java.util.zip.GZIPOutputStream
 
 // what a paired tv can ask the phone's library for: a copy of it, the song files it keeps, and the plays and likes made on the tv
@@ -42,7 +43,7 @@ internal class PhoneLibraryRoutes(
         }
         return LinkResponse.stream(SnapshotType) { out ->
             try {
-                GZIPOutputStream(out, 64 * 1024).use { zip -> work.inputStream().use { it.copyTo(zip, 64 * 1024) } }
+                GZIPOutputStream(out.asOutputStream(), 64 * 1024).use { zip -> work.inputStream().use { it.copyTo(zip, 64 * 1024) } }
             } finally {
                 work.delete()
             }
@@ -162,7 +163,7 @@ internal class PhoneLibraryRoutes(
         context.contentResolver.openAssetFileDescriptor(uri, "r")?.use { it.length.takeIf { length -> length > 0 } }
     }.getOrNull()
 
-    private fun copyLocal(uri: Uri, start: Long, count: Long, out: OutputStream) {
+    private fun copyLocal(uri: Uri, start: Long, count: Long, out: LinkOutput) {
         val descriptor = if (uri.scheme == "file" || uri.scheme == null) null else context.contentResolver.openFileDescriptor(uri, "r")
         val input = descriptor?.let { FileInputStream(it.fileDescriptor) } ?: FileInputStream(File(requireNotNull(uri.path)))
         input.use { stream ->

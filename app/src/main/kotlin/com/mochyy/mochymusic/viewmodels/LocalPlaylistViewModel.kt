@@ -17,8 +17,6 @@ import com.mochyy.mochymusic.extensions.toEnum
 import com.mochyy.mochymusic.playlistcover.PlaylistCovers
 import com.mochyy.mochymusic.utils.SyncUtils
 import com.mochyy.mochymusic.utils.dataStore
-import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -32,13 +30,10 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.text.Collator
 import java.util.Locale
-import javax.inject.Inject
 
-@HiltViewModel
 class LocalPlaylistViewModel
-@Inject
 constructor(
-    @ApplicationContext context: Context,
+    context: Context,
     database: MusicDatabase,
     private val syncUtils: SyncUtils,
     savedStateHandle: SavedStateHandle,

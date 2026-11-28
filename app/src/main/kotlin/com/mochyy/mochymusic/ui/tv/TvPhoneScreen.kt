@@ -40,7 +40,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.navigation.compose.hiltViewModel
+import org.koin.compose.viewmodel.koinViewModel
 import com.mochyy.mochymusic.R
 import com.mochyy.mochymusic.link.PhoneFiles
 import com.mochyy.mochymusic.link.tv.PairTarget
@@ -66,7 +66,7 @@ internal fun TvPhoneScreen(profile: TvProfile) {
 
 // "hello again": the phone's state in a big card on the dotted panel, and what came over from it on the right
 @Composable
-private fun TvPhoneLinked(profile: TvProfile, library: LibraryHomeViewModel = hiltViewModel()) {
+private fun TvPhoneLinked(profile: TvProfile, library: LibraryHomeViewModel = koinViewModel()) {
     val link = LocalTvLink.current
     val actions = LocalTvActions.current
     val state by link.sync.state.collectAsState()

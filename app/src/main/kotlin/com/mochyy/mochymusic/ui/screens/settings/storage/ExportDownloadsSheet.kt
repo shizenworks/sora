@@ -41,10 +41,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.mochyy.mochymusic.R
-import com.mochyy.mochymusic.playback.ExportChoice
-import com.mochyy.mochymusic.playback.ExportLayout
-import com.mochyy.mochymusic.playback.ExportStep
 import com.mochyy.mochymusic.playback.StoragePlace
+import com.mochyy.mochymusic.viewmodels.ExportChoice
+import com.mochyy.mochymusic.viewmodels.ExportLayout
+import com.mochyy.mochymusic.viewmodels.ExportStep
 import com.mochyy.mochymusic.ui.component.AppSwitch
 import com.mochyy.mochymusic.ui.component.PopupSheetState
 import com.mochyy.mochymusic.ui.component.RemoteFocus
@@ -74,7 +74,7 @@ fun PopupSheetState.showExportDownloadsSheet(viewModel: StorageViewModel) {
         buttonBar = {
             val step by viewModel.exportStep.collectAsState()
             val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { tree ->
-                if (tree != null) viewModel.export(tree, options.choice())
+                if (tree != null) viewModel.export(tree.toString(), options.choice())
             }
             val working = step as? ExportStep.Working
             val card = options.targetCard

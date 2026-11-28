@@ -1,0 +1,3 @@
+[submodule "opusDecoder/src/main/jni/libopus"]
+	path = opusDecoder/src/main/jni/libopus
+	url = https://github.com/xiph/opus.git

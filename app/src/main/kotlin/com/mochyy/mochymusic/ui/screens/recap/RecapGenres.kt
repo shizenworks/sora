@@ -7,11 +7,7 @@
 package com.mochyy.mochymusic.ui.screens.recap
 
 import android.content.Context
-import androidx.compose.runtime.Immutable
 import com.mochyy.mochymusic.utils.ArtistGenres
-
-@Immutable
-data class GenreShare(val name: String, val fraction: Float, val playTimeMs: Long)
 
 internal object RecapGenres {
     /** Genre shares of [artists]' listening time, biggest first; null when none could be named. */

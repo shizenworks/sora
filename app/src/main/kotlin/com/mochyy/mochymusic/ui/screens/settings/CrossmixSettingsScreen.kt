@@ -146,6 +146,8 @@ fun CrossmixSettingsScreen(navController: NavController) {
                     picture = { TransitionPicture(TransitionStyle.CrossMix, overlap = 0.42f, active = selected) },
                 ) {
                     CardNote(stringResource(R.string.crossmix_desc), hideDescriptions)
+                    // the cost is always said, even with descriptions hidden: it's what tells Crossmix from a plain fade
+                    CardNote(stringResource(R.string.crossmix_battery_note), hidden = false)
                     CrossmixControls()
                     LabCollapsible(crossmixTools.any { it.isVisible }) {
                         Spacer(Modifier.height(8.dp))

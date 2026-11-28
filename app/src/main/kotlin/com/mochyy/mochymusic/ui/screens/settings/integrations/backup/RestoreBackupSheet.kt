@@ -36,10 +36,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mochyy.mochymusic.R
-import com.mochyy.mochymusic.backup.CloudBackupFile
 import com.mochyy.mochymusic.ui.component.SheetPillButton
 import com.mochyy.mochymusic.ui.screens.search.SearchColors
 import com.mochyy.mochymusic.ui.screens.settings.storage.formatSize
+import com.mochyy.mochymusic.viewmodels.BackupFile
 import com.mochyy.mochymusic.viewmodels.CloudBackupList
 import com.mochyy.mochymusic.viewmodels.CloudBackupViewModel
 
@@ -50,7 +50,7 @@ private val RowShape = RoundedCornerShape(14.dp)
 internal fun RestoreBackupContent(viewModel: CloudBackupViewModel) {
     val list by viewModel.backups.collectAsState()
     val step by viewModel.step.collectAsState()
-    var picked by remember { mutableStateOf<CloudBackupFile?>(null) }
+    var picked by remember { mutableStateOf<BackupFile?>(null) }
     val progress = stepText(step)
 
     Column(Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
@@ -97,7 +97,7 @@ private fun Notice(text: String, color: Color = SearchColors.Secondary) {
 
 // when it was made on top, which phone and how big underneath, ticked once picked
 @Composable
-private fun BackupRow(backup: CloudBackupFile, isPicked: Boolean, onClick: () -> Unit) {
+private fun BackupRow(backup: BackupFile, isPicked: Boolean, onClick: () -> Unit) {
     val context = LocalContext.current
     val made = remember(backup.modifiedAt) {
         DateUtils.formatDateTime(

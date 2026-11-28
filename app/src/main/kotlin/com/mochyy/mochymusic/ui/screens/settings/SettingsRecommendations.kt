@@ -280,7 +280,7 @@ private val RecommendedOptions = listOf(
     RecommendedSetting(
         titleRes = R.string.settings_rec_lastfm,
         pageRes = R.string.integrations,
-        route = scrobbleServiceRoute(ScrobbleSite.LASTFM),
+        route = scrobbleServiceRoute(ScrobbleSite.LASTFM.name),
         icon = { painterResource(R.drawable.music_history) },
         applies = { it.prefs[LastFMSessionKey].isNullOrEmpty() && it.prefs[LibreFmSessionKey].isNullOrEmpty() },
     ),

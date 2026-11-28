@@ -7,9 +7,9 @@ import com.mochyy.mochymusic.db.MusicDatabase
 import com.mochyy.mochymusic.db.entities.ImportedPlaylist
 import com.mochyy.mochymusic.extensions.isUserLoggedIn
 import com.mochyy.mochymusic.importer.account.AccountService
-import com.mochyy.mochymusic.importer.account.ResyncTarget
 import com.mochyy.mochymusic.importer.account.YouTubeMusicLibrary
 import com.mochyy.mochymusic.importer.account.named
+import com.mochyy.mochymusic.ui.screens.settings.importsync.PlaylistResyncGateway
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -26,35 +26,13 @@ fun resyncSourceOf(imported: ImportedPlaylist?, browseId: String?): ImportSource
     return source.takeUnless { followsYouTube }
 }
 
-/** how a re-sync gets going, for the menu that asked for it */
-sealed interface ResyncStart {
-    /** reading in the background now; a toast says what changed */
-    data object Started : ResyncStart
-
-    /** only the signed-in account can read it: open the service's sign-in page in re-sync mode */
-    data class ThroughAccount(val service: AccountService) : ResyncStart
-
-    /** nothing says where it lives, so the user pastes its link */
-    data object NeedsLink : ResyncStart
-
-    data class Failed(val message: String) : ResyncStart
-}
-
-/** how far re-sync all got on its own. busy: an import was running, so nothing started */
-data class ResyncAllStart(
-    val started: Int,
-    val throughAccount: List<AccountService>,
-    val needLink: Int,
-    val busy: Boolean = false,
-)
-
 /** works out how to read an imported playlist again (its link or youtube id, or the service's sign-in page), old imports saved neither so they're found by name, deezer ones ask for a link */
 @Singleton
 class PlaylistResync @Inject constructor(
     @ApplicationContext private val context: Context,
     private val database: MusicDatabase,
     private val importService: MusicImportService,
-) {
+) : PlaylistResyncGateway {
     suspend fun start(playlistId: String): ResyncStart = withContext(Dispatchers.IO) {
         val found = lookUp(playlistId) ?: return@withContext ResyncStart.Failed(NOT_IMPORTED)
         when (val route = routeOf(found)) {
@@ -82,7 +60,7 @@ class PlaylistResync @Inject constructor(
     }
 
     /** with the playlist's link, pasted by the user for an import that didn't save one */
-    suspend fun startFromLink(playlistId: String, link: String): ResyncStart = withContext(Dispatchers.IO) {
+    override suspend fun startFromLink(playlistId: String, link: String): ResyncStart = withContext(Dispatchers.IO) {
         val found = lookUp(playlistId) ?: return@withContext ResyncStart.Failed(NOT_IMPORTED)
         val linkSource = LinkImporter.detect(link)?.importSource()
             ?: return@withContext ResyncStart.Failed("Paste a link to the playlist on ${found.source.label}.")
@@ -93,18 +71,18 @@ class PlaylistResync @Inject constructor(
     }
 
     /** with songs the account page has already read, by the playlist they're for */
-    suspend fun startWithReads(reads: Map<String, ResyncRead>): ResyncStart = withContext(Dispatchers.IO) {
+    override suspend fun startWithReads(reads: Map<String, ResyncRead>): ResyncStart = withContext(Dispatchers.IO) {
         val requests = reads.mapNotNull { (playlistId, read) -> lookUp(playlistId)?.let { request(it) { read } } }
         if (requests.isEmpty()) ResyncStart.Failed(NOT_IMPORTED) else launch(requests)
     }
 
     /** what the account page looks for once the user is signed in */
-    suspend fun target(playlistId: String): ResyncTarget? = withContext(Dispatchers.IO) {
+    override suspend fun target(playlistId: String): ResyncTarget? = withContext(Dispatchers.IO) {
         lookUp(playlistId)?.target()
     }
 
     /** every imported playlist only service's signed-in account can read, for re-sync all */
-    suspend fun accountTargets(service: AccountService): List<ResyncTarget> = withContext(Dispatchers.IO) {
+    override suspend fun accountTargets(service: AccountService): List<ResyncTarget> = withContext(Dispatchers.IO) {
         database.importedPlaylists().first()
             .mapNotNull { lookUp(it.playlistId) }
             .filter { (routeOf(it) as? Route.ThroughAccount)?.service == service }

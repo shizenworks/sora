@@ -55,7 +55,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import org.koin.compose.viewmodel.koinViewModel
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import com.mochyy.mochymusic.LocalPlayerAwareWindowInsets
@@ -84,7 +84,7 @@ private val HeaderHeight = 300.dp
 fun GenreScreen(
     navController: NavController,
     pureBlack: Boolean = false,
-    viewModel: GenreViewModel = hiltViewModel(),
+    viewModel: GenreViewModel = koinViewModel(),
 ) {
     val browseResult by viewModel.result.collectAsState()
     val community by viewModel.communityPlaylists.collectAsState()

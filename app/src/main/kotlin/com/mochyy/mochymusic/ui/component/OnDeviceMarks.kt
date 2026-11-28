@@ -33,7 +33,7 @@ import com.mochyy.mochymusic.LocalDatabase
 import com.mochyy.mochymusic.LocalDownloadUtil
 import com.mochyy.mochymusic.R
 import com.mochyy.mochymusic.playback.StreamFacts
-import com.mochyy.mochymusic.ui.player.StreamFormatBadge
+import com.mochyy.mochymusic.shared.ui.player.StreamFormatBadge
 import kotlinx.coroutines.flow.map
 
 /** Imported files have ids of their own; everything else is a YouTube video id. */

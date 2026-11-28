@@ -39,6 +39,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import org.koin.compose.viewmodel.koinViewModel
 import com.mochyy.mochymusic.R
 import com.mochyy.mochymusic.constants.CrossmixMode
 import com.mochyy.mochymusic.constants.CrossmixModeKey
@@ -62,10 +63,12 @@ import com.mochyy.mochymusic.ui.screens.setup.onboarding.ImportAskPage
 import com.mochyy.mochymusic.ui.screens.setup.onboarding.ImportModePage
 import com.mochyy.mochymusic.ui.screens.setup.onboarding.LastOnePage
 import com.mochyy.mochymusic.ui.screens.setup.onboarding.Onb
+import com.mochyy.mochymusic.ui.screens.setup.onboarding.OnbGlass
 import com.mochyy.mochymusic.ui.screens.setup.onboarding.OnboardingBrowserSheet
 import com.mochyy.mochymusic.ui.screens.setup.onboarding.ProfilePage
 import com.mochyy.mochymusic.ui.screens.setup.onboarding.ProviderListPage
 import com.mochyy.mochymusic.ui.screens.setup.onboarding.ProviderSetupPage
+import com.mochyy.mochymusic.ui.screens.setup.onboarding.RestoreCounts
 import com.mochyy.mochymusic.ui.screens.setup.onboarding.RestoringPage
 import com.mochyy.mochymusic.ui.screens.setup.onboarding.SyncOptionsPage
 import com.mochyy.mochymusic.ui.screens.setup.onboarding.WhatToSyncPage
@@ -80,7 +83,12 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import com.mochyy.mochymusic.ui.component.backdropClick
+import com.mochyy.mochymusic.ui.component.BlurDirection
+import com.mochyy.mochymusic.ui.component.GlassState
+import com.mochyy.mochymusic.ui.component.ProgressiveGlassBackground
 import com.mochyy.mochymusic.ui.component.SheetHandleRow
+import com.mochyy.mochymusic.ui.component.glassRoot
+import com.mochyy.mochymusic.ui.component.rememberDeviceTilt
 
 private enum class Step {
     Welcome, ImportAsk, ImportMode, Restoring, Providers, ProviderSetup, WhatToSync, SyncOptions,
@@ -97,7 +105,8 @@ fun SetupWizardScreen(
     onDrag: (Float) -> Unit,
     onDragRelease: () -> Unit,
 ) {
-    val vm: OnboardingViewModel = hiltViewModel()
+    // Koin now (di/koin/OnboardingKoin.kt); TransferViewModel below is still Hilt until its owner moves it
+    val vm: OnboardingViewModel = koinViewModel()
     val scope = rememberCoroutineScope()
 
     val history = remember { mutableStateListOf(Step.Welcome) }
@@ -143,12 +152,12 @@ fun SetupWizardScreen(
     }
 
     // ---- previous data: a whole export from the old app or another phone ----
-    val transfer: TransferViewModel = hiltViewModel()
+    val transfer: TransferViewModel = org.koin.compose.viewmodel.koinViewModel()
     val importStep by transfer.import.collectAsState()
     val transferManifest by transfer.manifest.collectAsState()
     var waitingForPermission by remember { mutableStateOf<Uri?>(null) }
     fun startRestoring(uri: Uri) {
-        transfer.importFrom(uri)
+        transfer.importFrom(uri.toString())
         go(Step.Restoring)
     }
     // local songs come back through the phone's music library, so ask first; a no still imports everything else
@@ -161,11 +170,11 @@ fun SetupWizardScreen(
     val transferPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
             scope.launch {
-                transfer.check(uri)
+                transfer.check(uri.toString())
                     .onSuccess { manifest ->
                         if (transfer.wantsAudioPermission(manifest)) {
                             waitingForPermission = uri
-                            audioPermission.launch(TransferViewModel.AudioPermission)
+                            audioPermission.launch(transfer.audioPermission)
                         } else {
                             startRestoring(uri)
                         }
@@ -355,7 +364,10 @@ fun SetupWizardScreen(
                             backupError = backupError,
                         )
 
-                        Step.Restoring -> RestoringPage(step = importStep, manifest = transferManifest)
+                        Step.Restoring -> RestoringPage(
+                            step = importStep,
+                            counts = transferManifest?.let { RestoreCounts(it.songs, it.playlists, it.plays) },
+                        )
 
                         Step.Providers -> ProviderListPage(
                             onPick = { service ->
@@ -409,18 +421,26 @@ fun SetupWizardScreen(
                             onBack = { if (sessionState is AccountImportState.Reading) session?.cancelReading() else back() },
                         )
 
-                        Step.Profile -> ProfilePage(
-                            username = username,
-                            onUsernameChange = { username = it },
-                            photo = profilePicUri,
-                            onPhotoClick = {
-                                val existing = lastPickedUri
-                                if (existing != null) selectedUncroppedUri = existing else openPhotoPicker()
-                            },
-                            cardNumber = vm.cardNumber,
-                            joinedText = stringResource(R.string.profile_joined_at, vm.joinedDateText),
-                            onNext = { if (username.isNotBlank()) go(Step.Hello) },
-                        )
+                        Step.Profile -> {
+                            val deviceTilt = rememberDeviceTilt()
+                            ProfilePage(
+                                username = username,
+                                onUsernameChange = { username = it },
+                                photo = profilePicUri,
+                                onPhotoClick = {
+                                    val existing = lastPickedUri
+                                    if (existing != null) selectedUncroppedUri = existing else openPhotoPicker()
+                                },
+                                cardNumber = vm.cardNumber,
+                                joinedText = stringResource(R.string.profile_joined_at, vm.joinedDateText),
+                                onNext = { if (username.isNotBlank()) go(Step.Hello) },
+                                cardModifier = Modifier.graphicsLayer {
+                                    rotationX = deviceTilt.rotationX
+                                    rotationY = deviceTilt.rotationY
+                                    cameraDistance = 14f * density
+                                },
+                            )
+                        }
 
                         Step.Hello -> HelloCardStep(
                             card = card,
@@ -435,6 +455,7 @@ fun SetupWizardScreen(
                             onDisableBlurChange = onDisableBlurChange,
                             detected = vm.blur?.summary,
                             onContinue = { go(Step.LastOne) },
+                            glass = rememberOnbGlass(),
                         )
 
                         Step.LastOne -> LastOnePage(
@@ -517,4 +538,22 @@ fun SetupWizardScreen(
             )
         }
     }
+}
+
+/** the app's real backdrop blur for the warning page, which stays in shared without it */
+@Composable
+private fun rememberOnbGlass(): OnbGlass {
+    val state = remember { GlassState() }
+    return OnbGlass(
+        root = Modifier.glassRoot(state),
+        backdrop = { modifier ->
+            ProgressiveGlassBackground(
+                state = state,
+                maxBlurRadius = { 30f },
+                direction = BlurDirection.TopToBottom,
+                steps = 3,
+                modifier = modifier,
+            )
+        },
+    )
 }

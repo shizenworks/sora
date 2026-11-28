@@ -21,9 +21,9 @@ class ScrobbleTimer(
     private val scope: () -> CoroutineScope,
     private val scrobbler: Scrobbler,
 ) {
-    var minSongSeconds = DEFAULT_MIN_SONG_SECONDS
-    var playedFraction = DEFAULT_PLAYED_FRACTION
-    var maxWaitSeconds = DEFAULT_MAX_WAIT_SECONDS
+    var minSongSeconds = ScrobbleDefaults.DEFAULT_MIN_SONG_SECONDS
+    var playedFraction = ScrobbleDefaults.DEFAULT_PLAYED_FRACTION
+    var maxWaitSeconds = ScrobbleDefaults.DEFAULT_MAX_WAIT_SECONDS
 
     private var track: ScrobbleTrack? = null
     private var trackId: String? = null
@@ -93,11 +93,6 @@ class ScrobbleTimer(
         runningSince = 0
     }
 
-    companion object {
-        const val DEFAULT_MIN_SONG_SECONDS = 30
-        const val DEFAULT_PLAYED_FRACTION = 0.5f
-        const val DEFAULT_MAX_WAIT_SECONDS = 240
-    }
 }
 
 /**

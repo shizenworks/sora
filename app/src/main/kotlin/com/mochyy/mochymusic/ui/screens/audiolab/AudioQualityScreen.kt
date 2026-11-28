@@ -44,7 +44,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import androidx.hilt.navigation.compose.hiltViewModel
+import org.koin.compose.viewmodel.koinViewModel
 import androidx.compose.runtime.collectAsState
 import com.mochyy.mochymusic.module.AccountState
 import com.mochyy.mochymusic.module.ModuleFeature
@@ -81,7 +81,7 @@ private val YouTubeOptions = listOf(
 private class Effective(val quality: AudioQuality, val title: String, val format: String)
 
 @Composable
-fun AudioQualityScreen(navController: NavController, modules: ModulesViewModel = hiltViewModel()) {
+fun AudioQualityScreen(navController: NavController, modules: ModulesViewModel = koinViewModel()) {
     val (stored, onQuality) = rememberEnumPreference(AudioQualityKey, defaultValue = AudioQuality.AUTO)
     val (downloadQuality, onDownloadQuality) = rememberEnumPreference(
         com.mochyy.mochymusic.constants.DownloadQualityKey,

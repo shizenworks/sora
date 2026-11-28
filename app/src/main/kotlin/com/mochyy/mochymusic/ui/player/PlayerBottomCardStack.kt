@@ -62,7 +62,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import org.koin.compose.viewmodel.koinViewModel
 import coil3.compose.AsyncImage
 import com.mochyy.mochymusic.LocalPlayerConnection
 import com.mochyy.mochymusic.R
@@ -160,7 +160,7 @@ internal fun PlayerBottomCardStack(
     val density = LocalDensity.current
     val scope = rememberCoroutineScope()
 
-    val lyricsViewModel: LyricsScreenViewModel = hiltViewModel()
+    val lyricsViewModel: LyricsScreenViewModel = koinViewModel()
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
     LaunchedEffect(mediaMetadata?.id) {
         mediaMetadata?.let(lyricsViewModel::ensureLyricsLoaded)

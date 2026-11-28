@@ -16,7 +16,9 @@ import com.mochyy.mochymusic.link.LinkIdentity
 import com.mochyy.mochymusic.link.LinkWire
 import com.mochyy.mochymusic.link.PhoneFile
 import com.mochyy.mochymusic.link.PhoneFiles
+import com.mochyy.mochymusic.link.copyTo
 import com.mochyy.mochymusic.link.discoverPeers
+import com.mochyy.mochymusic.link.gunzipTo
 import com.mochyy.mochymusic.playback.DownloadUtil
 import com.mochyy.mochymusic.playback.ExoDownloadService
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -41,7 +43,6 @@ import org.json.JSONObject
 import timber.log.Timber
 import java.io.File
 import java.io.IOException
-import java.util.zip.GZIPInputStream
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -178,13 +179,14 @@ class TvPhoneSync @Inject constructor(
         return null
     }
 
-    private fun hello(phone: LinkedPhone): JSONObject? {
+    private suspend fun hello(phone: LinkedPhone): JSONObject? {
         val base = LinkWire.baseUrl(phone.host, phone.port)
         return try {
             // the tv says where its remote control listens, so the phone can play things here
-            LinkWire.get("$base/hello?tvPort=${TvControl.port}", credentials(phone)).use { response ->
+            val response = LinkWire.get("$base/hello?tvPort=${TvControl.port}", credentials(phone))
+            try {
                 when (response.code) {
-                    200 -> JSONObject(response.body.string()).also { PhoneFiles.reachedAt(base, credentials(phone)) }
+                    200 -> JSONObject(response.text()).also { PhoneFiles.reachedAt(base, credentials(phone)) }
                     401 -> {
                         // the phone unlinked this tv on its side; the library stays here as the profile's own
                         TvProfiles.active()?.let { profile -> TvProfiles.update(context, profile.id) { it.copy(phone = null) } }
@@ -195,8 +197,10 @@ class TvPhoneSync @Inject constructor(
                     }
                     else -> null
                 }
+            } finally {
+                response.close()
             }
-        } catch (_: IOException) {
+        } catch (_: Exception) {
             null
         }
     }
@@ -254,7 +258,7 @@ class TvPhoneSync @Inject constructor(
     private fun credentials(phone: LinkedPhone) = LinkCredentials(LinkIdentity.id(context), phone.key)
 
     // plays since the last sync, and likes or library changes made on the tv, so the phone's own copy has them too
-    private fun pushChanges(profileId: String, base: String, auth: LinkCredentials) {
+    private suspend fun pushChanges(profileId: String, base: String, auth: LinkCredentials) {
         val db = database.openHelper.readableDatabase
         val baseline = readBaseline(profileId)
         val plays = LinkRows.read(db, "SELECT * FROM event WHERE id > ?", arrayOf(baseline.lastEventId))
@@ -274,9 +278,9 @@ class TvPhoneSync @Inject constructor(
             .put("unliked", JSONArray(unliked))
             .put("added", JSONArray(added))
             .put("removed", JSONArray(removed))
-        LinkWire.postJson("$base/changes", auth, body.toString()).use { response ->
-            if (!response.isSuccessful) throw IOException("phone turned the changes away (${response.code})")
-        }
+        val response = LinkWire.postJson("$base/changes", auth, body.toString())
+        if (!response.isSuccessful) throw IOException("phone turned the changes away (${response.code})")
+        response.close()
         // the phone has them now; if the pull after this fails, the next sync mustn't send the same plays twice
         saveBaseline(profileId)
     }
@@ -302,23 +306,19 @@ class TvPhoneSync @Inject constructor(
         return rows
     }
 
-    private fun pullLibrary(base: String, auth: LinkCredentials): File {
+    private suspend fun pullLibrary(base: String, auth: LinkCredentials): File {
         val target = File(context.cacheDir, "link_library_${System.nanoTime()}.db")
-        LinkWire.getSlow("$base/library", auth).use { response ->
-            if (!response.isSuccessful) throw IOException("phone didn't send its library (${response.code})")
-            GZIPInputStream(response.body.byteStream(), 64 * 1024).use { input ->
-                target.outputStream().use { input.copyTo(it, 64 * 1024) }
-            }
-        }
+        val response = LinkWire.getSlow("$base/library", auth)
+        if (!response.isSuccessful) throw IOException("phone didn't send its library (${response.code})")
+        response.gunzipTo(target)
         return target
     }
 
-    private fun pullFiles(profileId: String, base: String, auth: LinkCredentials) {
+    private suspend fun pullFiles(profileId: String, base: String, auth: LinkCredentials) {
         // a phone with lots of its own song files measures each one first, which can outlast the usual wait
-        val array = LinkWire.getSlow("$base/files", auth).use { response ->
-            if (!response.isSuccessful) return
-            JSONArray(response.body.string())
-        }
+        val response = LinkWire.getSlow("$base/files", auth)
+        if (!response.isSuccessful) return
+        val array = JSONArray(response.text())
         File(TvProfiles.folder(context, profileId), FilesName).writeText(array.toString())
         PhoneFiles.update(parseFiles(array))
     }
@@ -330,7 +330,7 @@ class TvPhoneSync @Inject constructor(
     }
 
     // the name and the picture set on the phone follow it here whenever either changes, read off every hello
-    private fun followPhoneProfile(profileId: String, phone: LinkedPhone, hello: JSONObject) {
+    private suspend fun followPhoneProfile(profileId: String, phone: LinkedPhone, hello: JSONObject) {
         val profile = TvProfiles.byId(profileId) ?: return
         val name = hello.optString("user").trim()
         if (name.isNotEmpty() && name != profile.name) TvProfiles.update(context, profileId) { it.copy(name = name) }
@@ -342,17 +342,16 @@ class TvPhoneSync @Inject constructor(
         }
     }
 
-    private fun fetchAvatar(profileId: String, phone: LinkedPhone, stamp: String?) {
+    private suspend fun fetchAvatar(profileId: String, phone: LinkedPhone, stamp: String?) {
         runCatching {
-            LinkWire.get("${LinkWire.baseUrl(phone.host, phone.port)}/avatar", credentials(phone)).use { response ->
-                if (!response.isSuccessful) return
-                // a fresh name each time, so the image cache never hands back an old picture
-                val file = File(TvProfiles.folder(context, profileId), "avatar_${System.currentTimeMillis()}.jpg")
-                file.outputStream().use { response.body.byteStream().copyTo(it) }
-                val before = TvProfiles.byId(profileId)?.avatarPath
-                TvProfiles.update(context, profileId) { it.copy(avatarPath = file.absolutePath, phoneAvatar = stamp) }
-                deleteOwnAvatar(profileId, before)
-            }
+            val response = LinkWire.get("${LinkWire.baseUrl(phone.host, phone.port)}/avatar", credentials(phone))
+            if (!response.isSuccessful) return
+            // a fresh name each time, so the image cache never hands back an old picture
+            val file = File(TvProfiles.folder(context, profileId), "avatar_${System.currentTimeMillis()}.jpg")
+            file.writeBytes(response.bytes())
+            val before = TvProfiles.byId(profileId)?.avatarPath
+            TvProfiles.update(context, profileId) { it.copy(avatarPath = file.absolutePath, phoneAvatar = stamp) }
+            deleteOwnAvatar(profileId, before)
         }
     }
 
@@ -400,7 +399,7 @@ class TvPhoneSync @Inject constructor(
         withContext(Dispatchers.Main) { DownloadService.sendAddDownload(context, ExoDownloadService::class.java, request, false) }
     }
 
-    private fun copyLocalFile(profileId: String, file: PhoneFile) {
+    private suspend fun copyLocalFile(profileId: String, file: PhoneFile) {
         val url = PhoneFiles.streamUrl(file.id) ?: throw IOException("phone is away")
         val extension = when {
             file.mime.contains("flac") -> "flac"
@@ -412,10 +411,9 @@ class TvPhoneSync @Inject constructor(
         val folder = File(TvProfiles.folder(context, profileId), "songs").apply { mkdirs() }
         val target = File(folder, "${file.id.hashCode().toUInt()}.$extension")
         val partial = File(target.path + ".part")
-        LinkWire.get(url, null).use { response ->
-            if (!response.isSuccessful) throw IOException("phone didn't send ${file.id}")
-            partial.outputStream().use { response.body.byteStream().copyTo(it, 64 * 1024) }
-        }
+        val response = LinkWire.get(url, null)
+        if (!response.isSuccessful) throw IOException("phone didn't send ${file.id}")
+        response.copyTo(partial)
         partial.renameTo(target)
         val copied = readCopied(profileId) + (file.id to target.absolutePath)
         File(TvProfiles.folder(context, profileId), CopiedName).writeText(JSONObject(copied).toString())

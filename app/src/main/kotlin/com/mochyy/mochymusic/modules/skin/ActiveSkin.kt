@@ -7,14 +7,13 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
 import com.mochyy.mochymusic.constants.ChromeGlassStyle
 import com.mochyy.mochymusic.constants.PlayerStyle
 import com.mochyy.mochymusic.module.LookSetting
 import com.mochyy.mochymusic.ui.component.createAgslShader
-import com.mochyy.mochymusic.ui.theme.LookFont
+import com.mochyy.mochymusic.ui.theme.AppFont
+import com.mochyy.mochymusic.ui.theme.fontFamilyFromFiles
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -196,7 +195,7 @@ object ActiveSkin {
                 // the same styles again change nothing, so the picker and the player don't rebuild; a reloaded module is a new skin and counts
                 val same = nextStyles.size == styles.size && nextStyles.zip(styles).all { (a, b) -> a.key == b.key && a.values == b.values && a.skin === b.skin && a.player == b.player }
                 if (!same) styles = nextStyles
-                LookFont.family = loaded.appFonts
+                AppFont.look = loaded.appFonts
                 if (playerFonts != loaded.playerFonts) playerFonts = loaded.playerFonts
                 glass = if (glassSkin != null && parts.glass != null && loaded.compiled.shader != null) {
                     ActiveGlass(
@@ -297,18 +296,11 @@ object ActiveSkin {
         }
     }
 
-    private fun fontFamily(skin: ModuleSkin, font: SkinFont): FontFamily? = runCatching {
+    private fun fontFamily(skin: ModuleSkin, font: SkinFont): FontFamily? {
         val regular = skin.fontFile(font.regular)?.takeIf { it.isFile } ?: return null
         val bold = skin.fontFile(font.bold)?.takeIf { it.isFile }
-        // a broken file throws here, off the main thread, not the first time some text draws with it
-        val typeface = android.graphics.Typeface.createFromFile(regular)
-        // fonts from files with their weights are android 8+, older phones get the regular one and a drawn bold
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            FontFamily(listOfNotNull(Font(regular, FontWeight.Normal), bold?.let { Font(it, FontWeight.Bold) }))
-        } else {
-            FontFamily(typeface)
-        }
-    }.onFailure { Timber.tag("ActiveSkin").w(it, "Couldn't load the look's font") }.getOrNull()
+        return fontFamilyFromFiles(regular, bold)
+    }
 
     private const val MaxShaderBytes = 64 * 1024
     // "uniform float time;" or "layout(color) uniform half4 played;", the name is what a frame may set

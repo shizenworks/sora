@@ -38,7 +38,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import org.koin.compose.viewmodel.koinViewModel
 import com.mochyy.mochymusic.R
 import com.mochyy.mochymusic.eq.AudioLabStore
 import com.mochyy.mochymusic.eq.EqPresets
@@ -161,7 +161,7 @@ private fun LyricsSection(state: SongEditState) {
 
 @Composable
 private fun LyricsSourceSelect(state: SongEditState) {
-    val viewModel: LyricsMenuViewModel = hiltViewModel()
+    val viewModel: LyricsMenuViewModel = koinViewModel()
     val sources by viewModel.sources.collectAsState()
     LaunchedEffect(state.songId) { viewModel.checkSources(state.metadata) }
 

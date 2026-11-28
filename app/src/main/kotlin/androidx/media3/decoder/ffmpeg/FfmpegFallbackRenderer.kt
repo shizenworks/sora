@@ -71,7 +71,7 @@ open class FfmpegFallbackRenderer(
     }
 
     // float keeps a 24-bit alac whole, 16 bits would cut it down; dolby and dts stay at 16-bit integer pcm so unclamped float peaks never crackle
-    private fun shouldOutputFloat(format: Format): Boolean {
+    protected open fun shouldOutputFloat(format: Format): Boolean {
         if (!sinkTakes(format, C.ENCODING_PCM_16BIT)) return true
         val mime = format.sampleMimeType
         if (mime == MimeTypes.AUDIO_AC3 || mime == MimeTypes.AUDIO_E_AC3 || mime == MimeTypes.AUDIO_E_AC3_JOC ||

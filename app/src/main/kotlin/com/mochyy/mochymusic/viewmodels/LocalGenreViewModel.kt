@@ -16,8 +16,6 @@ import com.mochyy.mochymusic.db.MusicDatabase
 import com.mochyy.mochymusic.db.entities.Song
 import com.mochyy.mochymusic.importer.GenreSeparator
 import com.mochyy.mochymusic.utils.ArtistGenres
-import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
@@ -29,7 +27,6 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 @Immutable
 data class LocalGenre(val name: String, val songs: List<Song>)
@@ -68,9 +65,8 @@ private fun unknownArtists(songs: List<Song>, artistGenres: Map<String, String>)
 private fun songsWithGenres(database: MusicDatabase): Flow<Pair<List<Song>, Map<String, String>>> =
     combine(database.songsForGenres(), ArtistGenres.known.filterNotNull()) { songs, known -> songs to known }
 
-@HiltViewModel
-class LocalGenresViewModel @Inject constructor(
-    @ApplicationContext context: Context,
+class LocalGenresViewModel constructor(
+    context: Context,
     database: MusicDatabase,
 ) : ViewModel() {
     // null while it's first read; nothing is read while the tab isn't open
@@ -90,9 +86,8 @@ class LocalGenresViewModel @Inject constructor(
     }
 }
 
-@HiltViewModel
-class LocalGenreViewModel @Inject constructor(
-    @ApplicationContext context: Context,
+class LocalGenreViewModel constructor(
+    context: Context,
     database: MusicDatabase,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {

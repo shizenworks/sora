@@ -143,12 +143,6 @@
     native <methods>;
 }
 
-# Module store native signing bridge
--keep class com.mochyy.mochymusic.modules.browser.StoreSignature { *; }
--keepclassmembers class com.mochyy.mochymusic.modules.browser.StoreSignature {
-    native <methods>;
-}
-
 ## Modules from a zip
 # a zip module's own code reaches mochy only through these, by their original names
 -keep class com.mochyy.mochymusic.module.bridge.shared.** { *; }

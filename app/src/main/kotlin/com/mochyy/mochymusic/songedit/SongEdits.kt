@@ -4,6 +4,7 @@ package com.mochyy.mochymusic.songedit
 
 import com.mochyy.mochymusic.db.MusicDatabase
 import com.mochyy.mochymusic.db.entities.SongEdit
+import com.mochyy.mochymusic.db.entities.applyTo
 import com.mochyy.mochymusic.models.MediaMetadata
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

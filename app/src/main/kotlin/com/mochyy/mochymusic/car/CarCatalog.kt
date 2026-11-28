@@ -10,7 +10,10 @@ import com.music.innertube.models.PlaylistItem
 import com.music.innertube.models.SongItem
 import com.music.innertube.models.WatchEndpoint
 import com.music.innertube.models.YTItem
+import com.mochyy.mochymusic.constants.CarDeviceSongsKey
+import com.mochyy.mochymusic.constants.CarPinnedPlaylistIdsKey
 import com.mochyy.mochymusic.constants.HideVideoSongsKey
+import com.mochyy.mochymusic.constants.CarOnlineRecommendationsKey
 import com.mochyy.mochymusic.constants.SongSortType
 import com.mochyy.mochymusic.db.MusicDatabase
 import com.mochyy.mochymusic.db.entities.Album
@@ -65,6 +68,7 @@ class CarShelf(
 class CarCatalog(
     private val context: Context,
     private val database: MusicDatabase,
+    private val gate: CarStreamGate,
 ) {
     private val hideVideoSongs: Boolean get() = context.dataStore.get(HideVideoSongsKey, false)
 
@@ -78,6 +82,7 @@ class CarCatalog(
 
     // home's categories as the phone last worked them out, then youtube's own home, so the car never waits on the recommender
     suspend fun shelves(): List<CarShelf> = io {
+        if (!context.dataStore.get(CarOnlineRecommendationsKey, true)) return@io emptyList()
         val cache = HomeFeedCache(context)
         val categories = cache.loadCategories().orEmpty().map { Triple(it.title, it.thumbnailUrl, it.items) }
         val sections = categories.ifEmpty {
@@ -100,6 +105,41 @@ class CarCatalog(
     suspend fun likedCount(): Int = io { database.likedSongsCount().first() }
 
     suspend fun downloadedCount(): Int = io { database.downloadedSongs(SongSortType.CREATE_DATE, true).first().size }
+
+    // songs saved on this phone: imported local files and downloads, for the car's "songs on this device" row
+    fun showDeviceSongs(): Boolean = context.dataStore.get(CarDeviceSongsKey, true)
+
+    // the playlists the user pinned for the car, in their chosen order
+    fun pinnedPlaylistIds(): List<String> =
+        context.dataStore.get(CarPinnedPlaylistIdsKey, "").split(",").filter { it.isNotBlank() }
+
+    suspend fun pinnedPlaylists(): List<CarCollection> = io {
+        val ids = pinnedPlaylistIds()
+        if (ids.isEmpty()) return@io emptyList()
+        val playlists = database.playlistsByCreateDateAsc().first().associateBy { it.id }
+        ids.mapNotNull { id -> playlists[id]?.toCollection() }
+    }
+
+    suspend fun deviceSongs(): List<CarSong> = io {
+        val local = database.localSongs(SongSortType.CREATE_DATE, true).first()
+        val downloaded = database.downloadedSongs(SongSortType.CREATE_DATE, true).first()
+        (local + downloaded).distinctBy { it.id }.map { it.toCarSong() }
+    }
+
+    // what may start of a queue on this connection: the queue itself when all of it may, a shorter list when some of it may, null when none of it may
+    // [startIsChoice]: the start song was tapped, so leaving it out would start a different one; refuse instead
+    suspend fun allowedToPlay(queue: Queue, startIsChoice: Boolean = false): Queue? = io {
+        if (!gate.blocksStreams()) return@io queue
+        // a radio starts from youtube, so on mobile data it can't play at all
+        if (queue !is ListQueue) return@io null
+        val kept = gate.playable(queue.items)
+        if (kept.isEmpty()) return@io null
+        if (kept.size == queue.items.size) return@io queue
+        val start = queue.items.getOrNull(queue.startIndex)?.mediaId
+        val keptStart = kept.indexOfFirst { it.mediaId == start }
+        if (startIsChoice && keptStart == -1) return@io null
+        ListQueue(title = queue.title, items = kept, startIndex = keptStart.coerceAtLeast(0))
+    }
 
     suspend fun liked(): List<CarSong> = io { database.likedSongs(SongSortType.CREATE_DATE, true).first().map { it.toCarSong() } }
 

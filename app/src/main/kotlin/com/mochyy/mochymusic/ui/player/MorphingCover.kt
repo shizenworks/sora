@@ -18,6 +18,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
@@ -125,6 +126,7 @@ import com.mochyy.mochymusic.constants.DisableBlurKey
 import com.mochyy.mochymusic.constants.ForceYtBackdropBlur1500Key
 import com.mochyy.mochymusic.constants.PlayVideoBackgroundKey
 import com.mochyy.mochymusic.constants.DisableVideoAutoplayKey
+import com.mochyy.mochymusic.constants.HidePlayerThumbnailKey
 import com.mochyy.mochymusic.constants.PlayerBackgroundStyle
 import com.mochyy.mochymusic.constants.PlayerCoverStyle
 import com.mochyy.mochymusic.constants.PlayerCoverZoomKey
@@ -645,9 +647,10 @@ fun MorphingCover(
     // the new flagship's open player hides the backdrop completely under its cover and mirror, so nothing there needs to move
     val backdropHidden = frostedCover && coverBlur && coverStyle == PlayerCoverStyle.EDGE_TO_EDGE
     val appObscured = com.mochyy.mochymusic.LocalAppContentObscured.current
-    LaunchedEffect(editMode, alternateStyle, backdropHidden) {
+    // paused means the warp stands still, so it doesn't redraw the backdrop for nothing
+    LaunchedEffect(editMode, alternateStyle, backdropHidden, isPlaying) {
         snapshotFlow {
-            !alternateStyle && !editMode && !appObscured.value && progressProvider() > 0.02f && lyricsProgressProvider() < 0.6f &&
+            isPlaying && !alternateStyle && !editMode && !appObscured.value && progressProvider() > 0.02f && lyricsProgressProvider() < 0.6f &&
                 !(backdropHidden && progressProvider() >= 0.999f && lyricsProgressProvider() <= 0.001f)
         }
             .collectLatest { active ->
@@ -745,6 +748,7 @@ fun MorphingCover(
         val coverMagnify = remember { { animatedPauseScale } }
 
         SheetBackdrop(
+            isPlaying = isPlaying,
             progressProvider = progressProvider,
             endpointsPx = endpointsPx,
             trackInfo = trackInfo,
@@ -1437,6 +1441,18 @@ private fun MiniSongLines(title: String, artist: String, album: String, modifier
 
 @Composable
 private fun CoverPicture(thumbnailUrl: String?, modifier: Modifier = Modifier, zoom: (() -> Float)? = null) {
+    val (hidePlayerThumbnail) = rememberPreference(HidePlayerThumbnailKey, defaultValue = false)
+    // the mochy mark stands in for the cover; the cover's own box keeps its size and place
+    if (hidePlayerThumbnail) {
+        Box(modifier = modifier, contentAlignment = Alignment.Center) {
+            Image(
+                painter = painterResource(R.drawable.ic_mochy_mark),
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(0.4f),
+            )
+        }
+        return
+    }
     val context = LocalContext.current
     val imageRequest = remember(thumbnailUrl) {
         ImageRequest.Builder(context)
@@ -1462,6 +1478,7 @@ private fun CoverPicture(thumbnailUrl: String?, modifier: Modifier = Modifier, z
 @Composable
 private fun PlayerBackdropCrossfade(
     trackInfo: TrackInfo,
+    isPlaying: Boolean = true,
     backgroundStyle: PlayerBackgroundStyle,
     pureBlack: Boolean,
     playVideoBackground: Boolean,
@@ -1531,7 +1548,8 @@ private fun PlayerBackdropCrossfade(
                     thumbnailUrl = trackInfo.thumbnailUrl,
                     pureBlack = pureBlack,
                     modifier = Modifier.requiredSize(maxWidth, maxHeight),
-                    animate = backdropAnimate,
+                    // paused means the drift stands still (also stops the cover gradient's own clock)
+                    animate = backdropAnimate && isPlaying,
                 )
             } else {
                 CoverBackdropFade(
@@ -1945,6 +1963,7 @@ private const val MiniGlassOutBy = 0.02f
  */
 @Composable
 private fun SheetBackdrop(
+    isPlaying: Boolean = true,
     progressProvider: () -> Float,
     endpointsPx: MorphEndpointsPx,
     trackInfo: TrackInfo,
@@ -2000,6 +2019,7 @@ private fun SheetBackdrop(
         if (!alternateStyle && (trackInfo.thumbnailUrl != null || backgroundStyle != PlayerBackgroundStyle.COVER_GRADIENT)) {
             PlayerBackdropCrossfade(
                 trackInfo = trackInfo,
+                isPlaying = isPlaying,
                 backgroundStyle = backgroundStyle,
                 pureBlack = pureBlack,
                 playVideoBackground = playVideoBackground,

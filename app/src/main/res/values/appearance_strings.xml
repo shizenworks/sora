@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Appearance settings page -->
+    <string name="settings_appearance">Appearance</string>
+    <string name="settings_appearance_desc">Start tab, navigation bar, scale and colours.</string>
+    <string name="settings_start_tab">Start tab</string>
+    <string name="settings_start_tab_desc">The tab that opens when the app starts.</string>
+    <string name="settings_hide_nav_on_scroll">Hide navigation bar on scroll</string>
+    <string name="settings_hide_nav_on_scroll_desc">Slide the bar away while a list scrolls down, and bring it back when you scroll up.</string>
+    <string name="settings_accent">Accent colour</string>
+    <string name="settings_accent_desc">Colours the switches, sliders and selected items. The player keeps its own colours.</string>
+    <string name="settings_accent_art">From album art</string>
+    <string name="settings_custom_themes">Custom themes</string>
+    <string name="settings_custom_themes_hint">Tap a theme to use it, hold it to edit</string>
+    <string name="theme_new">New theme</string>
+    <string name="theme_edit">Edit theme</string>
+    <string name="theme_name">Name</string>
+    <string name="theme_colour">Colour</string>
+    <string name="settings_ui_scale">UI scale</string>
+    <string name="settings_ui_scale_desc">Makes everything in the app bigger or smaller.</string>
+    <string name="settings_tablet_layout">Tablet layout</string>
+    <string name="settings_tablet_layout_desc">Use the wide layout with the side bar on any screen, even a phone held upright.</string>
+    <string name="settings_system_font">System font</string>
+    <string name="settings_system_font_desc">Show the app in your phone\'s own font instead of Mochy\'s.</string>
+    <string name="settings_nav_bar">Navigation bar</string>
+    <string name="settings_nav_bar_desc">Choose which tabs show, and their order.</string>
+    <string name="settings_nav_bar_always">Always shown</string>
+    <string name="settings_nav_move_up">Move up</string>
+    <string name="settings_nav_move_down">Move down</string>
+</resources>

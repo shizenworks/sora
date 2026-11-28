@@ -10,6 +10,7 @@ import com.mochyy.mochymusic.db.entities.ImportedPlaylist
 import com.mochyy.mochymusic.db.entities.ImportedSong
 import com.mochyy.mochymusic.db.entities.PlaylistEntity
 import com.mochyy.mochymusic.db.entities.PlaylistSongMap
+import com.mochyy.mochymusic.db.nowLocal
 import com.mochyy.mochymusic.extensions.isUserLoggedIn
 import com.mochyy.mochymusic.models.toMediaMetadata
 import com.mochyy.mochymusic.utils.dataStore
@@ -27,9 +28,11 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.toJavaLocalDateTime
+import kotlinx.datetime.toKotlinLocalDateTime
 import timber.log.Timber
 import java.time.Instant
-import java.time.LocalDateTime
 import java.time.ZoneId
 import kotlin.coroutines.coroutineContext
 
@@ -117,12 +120,12 @@ internal class ImportSteps(
 
     /** when each song was added on the source so lists keep its order, a song with no date gets one just before the song above it since dateless sources list newest first */
     private fun sourceDates(matched: List<Matched>): Map<String, LocalDateTime> {
-        val now = LocalDateTime.now()
+        val now = nowLocal()
         val dates = HashMap<String, LocalDateTime>()
         var previous: LocalDateTime? = null
         matched.forEach { (track, item) ->
-            val date = track.addedAtMs?.let { LocalDateTime.ofInstant(Instant.ofEpochMilli(it), ZoneId.systemDefault()) }
-                ?: previous?.minusSeconds(1)
+            val date = track.addedAtMs?.let { java.time.LocalDateTime.ofInstant(Instant.ofEpochMilli(it), ZoneId.systemDefault()).toKotlinLocalDateTime() }
+                ?: previous?.toJavaLocalDateTime()?.minusSeconds(1)?.toKotlinLocalDateTime()
                 ?: now
             dates[item.id] = date
             previous = date
@@ -159,7 +162,7 @@ internal class ImportSteps(
 
         val playlist = PlaylistEntity(
             name = name,
-            bookmarkedAt = LocalDateTime.now(),
+            bookmarkedAt = nowLocal(),
             isEditable = true,
             thumbnailUrl = cover,
         )
@@ -170,7 +173,7 @@ internal class ImportSteps(
                     playlistId = playlist.id,
                     source = source.key,
                     sessionId = sessionId,
-                    importedAt = LocalDateTime.now(),
+                    importedAt = nowLocal(),
                     remoteId = origin?.remoteId,
                     remoteUrl = origin?.remoteUrl,
                     authorName = origin?.author?.name,
@@ -235,7 +238,7 @@ internal class ImportSteps(
     /** files imported songs into the library (it only lists inLibrary songs) and tags them with source for the imported from cards and the youtube sync, local only, see mirrorToYouTube for youtube */
     suspend fun fileIntoLibrary(songIds: List<String>, addedAt: Map<String, LocalDateTime> = emptyMap()) {
         if (songIds.isEmpty()) return
-        val now = LocalDateTime.now()
+        val now = nowLocal()
         val from = source.key
         val session = sessionId
         database.withTransaction {

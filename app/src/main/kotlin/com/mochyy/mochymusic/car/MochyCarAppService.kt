@@ -23,6 +23,7 @@ class MochyCarAppService : CarAppService() {
     @Inject lateinit var lyricsHelper: LyricsHelper
     @Inject lateinit var pairing: PhonePairing
     @Inject lateinit var link: PhoneLinkHost
+    @Inject lateinit var gate: CarStreamGate
 
     // a debug build talks to any host, like the desktop head unit; anything else only to android auto and the car makers google lists
     override fun createHostValidator(): HostValidator =
@@ -33,5 +34,5 @@ class MochyCarAppService : CarAppService() {
         }
 
     override fun onCreateSession(sessionInfo: SessionInfo): Session =
-        CarSession(database, lyricsHelper, pairing, link)
+        CarSession(database, lyricsHelper, pairing, link, gate)
 }

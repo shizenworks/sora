@@ -2,10 +2,12 @@
 
 package com.mochyy.mochymusic.viewmodels
 
-import android.content.Context
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.mochyy.mochymusic.db.entities.toggleLike
 import com.music.innertube.YouTube
 import com.music.innertube.models.AlbumItem
 import com.music.innertube.models.SongItem
@@ -27,12 +29,9 @@ import com.mochyy.mochymusic.extensions.filterExplicitAlbums
 import com.mochyy.mochymusic.utils.ArtistHeader
 import com.mochyy.mochymusic.utils.ArtistBannerLook
 import com.mochyy.mochymusic.utils.ArtistPageCache
-import com.mochyy.mochymusic.utils.dataStore
 import com.mochyy.mochymusic.utils.get
 import com.mochyy.mochymusic.utils.reportException
 import com.mochyy.mochymusic.ui.utils.resize
-import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -52,7 +51,6 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import java.util.Locale
-import javax.inject.Inject
 import com.mochyy.mochymusic.artistvideo.ArtistVideoCanvasProvider
 import com.mochyy.mochymusic.extensions.filterVideoSongs as filterVideoSongsLocal
 
@@ -70,10 +68,10 @@ data class ArtistRelease(
     val song: SongItem? = null,
 )
 
+// Koin builds it (di/koin/OnlineKoin.kt); the page, Apple artwork and canvas lookups stay on Android
 @OptIn(ExperimentalCoroutinesApi::class)
-@HiltViewModel
-class ArtistViewModel @Inject constructor(
-    @ApplicationContext private val context: Context,
+class ArtistViewModel(
+    private val preferences: DataStore<Preferences>,
     private val database: MusicDatabase,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
@@ -101,14 +99,14 @@ class ArtistViewModel @Inject constructor(
 
     val libraryArtist = database.artist(artistId)
         .stateIn(viewModelScope, SharingStarted.Lazily, null)
-    val librarySongs = context.dataStore.data
+    val librarySongs = preferences.data
         .map { (it[HideExplicitKey] ?: false) to (it[HideVideoSongsKey] ?: false) }
         .distinctUntilChanged()
         .flatMapLatest { (hideExplicit, hideVideoSongs) ->
             database.artistSongsPreview(artistId).map { it.filterExplicit(hideExplicit).filterVideoSongsLocal(hideVideoSongs) }
         }
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
-    val libraryAlbums = context.dataStore.data
+    val libraryAlbums = preferences.data
         .map { it[HideExplicitKey] ?: false }
         .distinctUntilChanged()
         .flatMapLatest { hideExplicit ->
@@ -151,7 +149,7 @@ class ArtistViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            context.dataStore.data
+            preferences.data
                 .map {
                     Triple(
                         it[HideExplicitKey] ?: false,
@@ -188,9 +186,9 @@ class ArtistViewModel @Inject constructor(
 
     fun fetchArtistsFromYTM() {
         viewModelScope.launch {
-            val hideExplicit = context.dataStore.get(HideExplicitKey, false)
-            val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
-            val hideYoutubeShorts = context.dataStore.get(HideYoutubeShortsKey, true)
+            val hideExplicit = preferences.get(HideExplicitKey, false)
+            val hideVideoSongs = preferences.get(HideVideoSongsKey, false)
+            val hideYoutubeShorts = preferences.get(HideYoutubeShortsKey, true)
             YouTube.artist(artistId)
                 .onSuccess { page ->
                     val filteredSections = page.sections
@@ -276,7 +274,7 @@ class ArtistViewModel @Inject constructor(
     }
 
     private suspend fun findCanvasMotion() {
-        if (!context.dataStore.get(ShowArtistVideoKey, true)) return
+        if (!preferences.get(ShowArtistVideoKey, true)) return
         // a page that couldn't load (a local artist, no connection) has no songs to look through, and waiting on it would leave the banner unsettled forever
         val page = combine(_page, _loadFailed, ::Pair).first { (page, failed) -> page != null || failed }.first ?: return
         val songs = page.sections

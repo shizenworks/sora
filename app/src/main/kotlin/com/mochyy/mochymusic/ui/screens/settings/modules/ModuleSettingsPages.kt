@@ -29,7 +29,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.navigation.compose.hiltViewModel
+import org.koin.compose.viewmodel.koinViewModel
 import coil3.compose.SubcomposeAsyncImage
 import com.mochyy.mochymusic.ui.theme.InterFontFamily
 import com.mochyy.mochymusic.viewmodels.ModulesViewModel
@@ -38,7 +38,7 @@ private val BubbleColor = Color(0xFF1C1C1E)
 private val SelectedBubbleColor = Color(0xFF3A3A3E)
 
 @Composable
-fun ModuleSettingsPages(open: (String) -> Unit, selected: String? = null, viewModel: ModulesViewModel = hiltViewModel()) {
+fun ModuleSettingsPages(open: (String) -> Unit, selected: String? = null, viewModel: ModulesViewModel = koinViewModel()) {
     val entries by viewModel.entries.collectAsState()
     val rows = remember(entries) {
         entries.filter { it.active }.flatMap { entry ->

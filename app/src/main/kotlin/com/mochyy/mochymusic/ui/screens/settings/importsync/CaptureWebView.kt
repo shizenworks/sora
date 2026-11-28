@@ -2,6 +2,7 @@ package com.mochyy.mochymusic.ui.screens.settings.importsync
 
 import android.view.ContextThemeWrapper
 import android.content.Context
+import android.net.Uri
 import android.view.ViewGroup
 import android.annotation.SuppressLint
 import android.graphics.Bitmap
@@ -55,6 +56,7 @@ import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 import com.mochyy.mochymusic.LocalPlayerAwareWindowInsets
 import com.mochyy.mochymusic.R
+import com.mochyy.mochymusic.importer.account.AccountService
 import com.mochyy.mochymusic.importer.account.DESKTOP_USER_AGENT
 import com.mochyy.mochymusic.importer.account.WEB_PLAYER_QUERY_HEADER
 import kotlinx.coroutines.delay
@@ -526,4 +528,113 @@ fun clearWebSession(origins: List<String>) {
         WebStorage.getInstance().deleteOrigin(origin)
     }
     cookies.flush()
+}
+
+/** reads musickit's own tokens once the user has signed in on music.apple.com */
+internal const val ApplePageProbeJs = """
+(function() {
+  try {
+    if (!window.MusicKit || !MusicKit.getInstance) return null;
+    var m = MusicKit.getInstance();
+    if (!m) return null;
+    return { dev: m.developerToken || null, user: m.musicUserToken || null };
+  } catch (e) { return null; }
+})();
+"""
+
+/** music.apple.com opens signed out, so press its sign in button once per page to bring the form up straight away */
+internal const val AppleAutoSignInJs = """
+(function() {
+  try {
+    if (window.__mochySignInPressed) return 'pressed';
+    var m = window.MusicKit && MusicKit.getInstance && MusicKit.getInstance();
+    if (m && m.isAuthorized) return 'authorized';
+    var button = document.querySelector('[data-testid="sign-in-button"]');
+    if (!button) return 'waiting';
+    window.__mochySignInPressed = true;
+    button.click();
+    return 'pressed';
+  } catch (e) { return 'error'; }
+})();
+"""
+
+private const val SpotifyPlayerOrigin = "https://open.spotify.com"
+private const val SpotifyLibraryUrl = "https://open.spotify.com/collection/tracks"
+
+/** spotify's sign-in cookie, set on .spotify.com once the account is signed in */
+private const val SpotifySignedInCookie = "sp_dc"
+
+/** reads the library query names and hashes out of the web player's own script, see docs/notes/settings.md */
+private val SpotifyFindQueriesJs = """
+(function() {
+  try {
+    if (window.__mochyQueriesFound) return 'done';
+    if (window.__mochyFinding) return 'finding';
+    var scanned = window.__mochyScanned = window.__mochyScanned || {};
+    var sources = [];
+    [].forEach.call(document.scripts, function(s) { if (s.src) sources.push(s.src); });
+    (performance.getEntriesByType('resource') || []).forEach(function(e) { sources.push(e.name); });
+    sources = sources.filter(function(src, i) {
+      return /spotifycdn\.com\/cdn\/build\/web-player\/.*\.js/.test(src) && !scanned[src] && sources.indexOf(src) === i;
+    });
+    if (!sources.length) return 'waiting';
+    window.__mochyFinding = true;
+    var found = {};
+    Promise.all(sources.map(function(src) {
+      scanned[src] = true;
+      return fetch(src).then(function(r) { return r.text(); }).then(function(text) {
+        var wanted = /"(libraryV\d+|fetchLibraryTracks|fetchPlaylistContents|fetchPlaylist)","query","([0-9a-f]{64})"/g;
+        var m;
+        while ((m = wanted.exec(text))) found[m[1]] = m[2];
+      }).catch(function() {});
+    })).then(function() {
+      Object.keys(found).forEach(function(name) {
+        var query = { name: name, hash: found[name], url: 'https://api-partner.spotify.com/pathfinder/v2/query', post: true, guessed: true };
+        window.$BRIDGE_NAME.onHeader('$WEB_PLAYER_QUERY_HEADER', JSON.stringify(query), location.href);
+      });
+      if (found.fetchLibraryTracks) window.__mochyQueriesFound = true;
+      window.__mochyFinding = false;
+    });
+    return 'finding';
+  } catch (e) { return 'error'; }
+})();
+"""
+
+/** the phone site has no library, so once signed in the view switches to the desktop site, see docs/notes/settings.md */
+private fun openSpotifyLibraryWhenSignedIn(view: WebView) {
+    if (view.isDesktopSite()) {
+        if (view.url?.startsWith(SpotifyPlayerOrigin) == true) view.evaluateJavascript(SpotifyFindQueriesJs, null)
+        return
+    }
+    val host = view.url?.let(Uri::parse)?.host ?: return
+    // still on the login, captcha or another site's sign-in page: let it finish first
+    if (!host.endsWith("spotify.com") || host == "accounts.spotify.com" || host == "challenge.spotify.com") return
+    val cookies = CookieManager.getInstance().getCookie(SpotifyPlayerOrigin).orEmpty()
+    if (cookies.split(';').none { it.substringBefore('=').trim() == SpotifySignedInCookie }) return
+    Timber.tag("SignInWeb").d("Spotify signed in, opening the desktop library")
+    view.useDesktopSite()
+    view.loadUrl(SpotifyLibraryUrl)
+}
+
+/** everything a sign-in page's periodic tick does for this service */
+internal fun AccountService.onSignInTick(
+    view: WebView,
+    onApplePageProbe: (String?) -> Unit,
+    onCookies: (String?) -> Unit,
+) {
+    when (this) {
+        AccountService.SPOTIFY -> {
+            openSpotifyLibraryWhenSignedIn(view)
+        }
+
+        AccountService.APPLE_MUSIC -> {
+            view.evaluateJavascript(AppleAutoSignInJs, null)
+            view.evaluateJavascript(ApplePageProbeJs, onApplePageProbe)
+            onCookies(CookieManager.getInstance().getCookie("https://music.apple.com"))
+        }
+
+        AccountService.TIDAL, AccountService.YOUTUBE_MUSIC -> {
+            Unit
+        }
+    }
 }

@@ -51,7 +51,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import org.koin.compose.viewmodel.koinViewModel
 import androidx.navigation.NavController
 import com.music.innertube.models.AlbumItem
 import com.music.innertube.models.ArtistItem
@@ -91,7 +91,7 @@ fun OnlineSearchScreen(
     onSearch: (String) -> Unit,
     onDismiss: () -> Unit,
     pureBlack: Boolean,
-    viewModel: OnlineSearchSuggestionViewModel = hiltViewModel(),
+    viewModel: OnlineSearchSuggestionViewModel = koinViewModel(),
 ) {
     val database = LocalDatabase.current
     val keyboardController = LocalSoftwareKeyboardController.current

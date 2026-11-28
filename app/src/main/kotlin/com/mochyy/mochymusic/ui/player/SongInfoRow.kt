@@ -58,12 +58,14 @@ import androidx.compose.ui.unit.sp
 import com.mochyy.mochymusic.LocalPlayerConnection
 import com.mochyy.mochymusic.R
 import com.mochyy.mochymusic.constants.PlayerHorizontalPadding
+import com.mochyy.mochymusic.shared.ui.player.StreamFormatBadge
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
 import com.mochyy.mochymusic.constants.ShowFormatBadgeKey
+import com.mochyy.mochymusic.constants.ShowFormatBitDepthKey
 import com.mochyy.mochymusic.constants.ShowFormatSampleRateKey
 import com.mochyy.mochymusic.utils.rememberPreference
 import com.mochyy.mochymusic.ui.component.RemoteFocus
@@ -113,6 +115,7 @@ fun SongInfoRow(
 
     val (showFormatBadge) = rememberPreference(ShowFormatBadgeKey, defaultValue = true)
     val (showSampleRate) = rememberPreference(ShowFormatSampleRateKey, defaultValue = false)
+    val (showBitDepth) = rememberPreference(ShowFormatBitDepthKey, defaultValue = false)
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -180,6 +183,7 @@ fun SongInfoRow(
                         artist = trackInfo.artist,
                         showFormatBadge = showFormatBadge,
                         showSampleRate = showSampleRate,
+                        showBitDepth = showBitDepth,
                         infoAlpha = infoAlpha,
                         badgeTuck = badgeTuck,
                         onBadgeClick = onStreamInfoClick,
@@ -194,6 +198,7 @@ fun SongInfoRow(
                                 artist = slot.artist,
                                 showFormatBadge = showFormatBadge,
                                 showSampleRate = showSampleRate,
+                                showBitDepth = showBitDepth,
                                 infoAlpha = infoAlpha,
                                 badgeTuck = badgeTuck,
                                 onBadgeClick = onStreamInfoClick,
@@ -299,6 +304,7 @@ private fun SongLines(
     artist: String,
     showFormatBadge: Boolean,
     showSampleRate: Boolean,
+    showBitDepth: Boolean,
     infoAlpha: () -> Float,
     badgeTuck: () -> Float,
     onBadgeClick: (() -> Unit)?,
@@ -313,7 +319,7 @@ private fun SongLines(
         val larp = rememberLarpMode()
         val badge = when {
             larp != null -> larpBadgeText(larp)
-            showFormatBadge -> streamBadgeText(facts, showSampleRate)
+            showFormatBadge -> streamBadgeText(facts, showSampleRate, showBitDepth)
             else -> null
         }
         // what the badge said, so it can still say it while it leaves

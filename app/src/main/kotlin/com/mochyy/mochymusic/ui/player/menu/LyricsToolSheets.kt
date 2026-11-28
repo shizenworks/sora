@@ -48,7 +48,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
@@ -56,7 +55,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import org.koin.compose.viewmodel.koinViewModel
 import com.mochyy.mochymusic.LocalPlayerConnection
 import com.mochyy.mochymusic.R
 import com.mochyy.mochymusic.constants.TranslateLanguageKey
@@ -100,7 +99,7 @@ import com.mochyy.mochymusic.ui.component.sheetHandleRoom
 @Composable
 fun LyricsEditorSheet(onDismiss: () -> Unit) {
     val playerConnection = LocalPlayerConnection.current ?: return
-    val viewModel: LyricsMenuViewModel = hiltViewModel()
+    val viewModel: LyricsMenuViewModel = koinViewModel()
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
     val lyricsEntity by playerConnection.currentLyrics.collectAsState(initial = null)
 
@@ -244,13 +243,13 @@ internal fun buildLrc(times: List<Long>, texts: List<String>): String = buildStr
 @Composable
 fun LyricsProviderSheet(onDismiss: () -> Unit) {
     val playerConnection = LocalPlayerConnection.current ?: return
-    val viewModel: LyricsMenuViewModel = hiltViewModel()
+    val viewModel: LyricsMenuViewModel = koinViewModel()
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
     val lyricsEntity by playerConnection.currentLyrics.collectAsState(initial = null)
     val sources by viewModel.sources.collectAsState()
 
     androidx.compose.runtime.LaunchedEffect(mediaMetadata?.id) {
-        mediaMetadata?.let(viewModel::checkSources)
+        mediaMetadata?.let { viewModel.checkSources(it) }
     }
 
     // Sources with lyrics first, in the order they would be preferred; then the rest.
@@ -281,12 +280,25 @@ fun LyricsProviderSheet(onDismiss: () -> Unit) {
                 .padding(horizontal = 20.dp)
                 .padding(top = 16.dp, bottom = 24.dp)
         ) {
-            Text(
-                text = stringResource(R.string.ps_lyrics_provider_title),
-                color = Color.White,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Bold,
-            )
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = stringResource(R.string.ps_lyrics_provider_title),
+                    color = Color.White,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f),
+                )
+                androidx.compose.material3.IconButton(
+                    enabled = mediaMetadata != null && sources.values.none { it == LyricsMenuViewModel.SourceState.Checking },
+                    onClick = { mediaMetadata?.let { viewModel.checkSources(it, refresh = true) } },
+                ) {
+                    Icon(
+                        painterResource(R.drawable.cached),
+                        contentDescription = stringResource(R.string.lyrics_refresh_sources),
+                        tint = Color.White,
+                    )
+                }
+            }
             Spacer(modifier = Modifier.height(14.dp))
 
             // your own file sits above every source and, like tapping one, takes over straight away
@@ -384,123 +396,19 @@ fun LyricsProviderSheet(onDismiss: () -> Unit) {
  * lyrics in is not something a shortlist can guess, and a missing language is a dead end with no
  * workaround. Presented in its own overlay because a list this long cannot sit inline.
  */
-private val TranslationTargetIds = listOf(
-    "af" to R.string.ps_lang_af,
-    "sq" to R.string.ps_lang_sq,
-    "am" to R.string.ps_lang_am,
-    "ar" to R.string.ps_lang_ar,
-    "hy" to R.string.ps_lang_hy,
-    "az" to R.string.ps_lang_az,
-    "eu" to R.string.ps_lang_eu,
-    "be" to R.string.ps_lang_be,
-    "bn" to R.string.ps_lang_bn,
-    "bs" to R.string.ps_lang_bs,
-    "bg" to R.string.ps_lang_bg,
-    "ca" to R.string.ps_lang_ca,
-    "ceb" to R.string.ps_lang_ceb,
-    "ny" to R.string.ps_lang_ny,
-    "zh-CN" to R.string.ps_lang_zh_cn,
-    "zh-TW" to R.string.ps_lang_zh_tw,
-    "co" to R.string.ps_lang_co,
-    "hr" to R.string.ps_lang_hr,
-    "cs" to R.string.ps_lang_cs,
-    "da" to R.string.ps_lang_da,
-    "nl" to R.string.ps_lang_nl,
-    "en" to R.string.ps_lang_en,
-    "eo" to R.string.ps_lang_eo,
-    "et" to R.string.ps_lang_et,
-    "tl" to R.string.ps_lang_tl,
-    "fi" to R.string.ps_lang_fi,
-    "fr" to R.string.ps_lang_fr,
-    "fy" to R.string.ps_lang_fy,
-    "gl" to R.string.ps_lang_gl,
-    "ka" to R.string.ps_lang_ka,
-    "de" to R.string.ps_lang_de,
-    "el" to R.string.ps_lang_el,
-    "gu" to R.string.ps_lang_gu,
-    "ht" to R.string.ps_lang_ht,
-    "ha" to R.string.ps_lang_ha,
-    "haw" to R.string.ps_lang_haw,
-    "iw" to R.string.ps_lang_iw,
-    "hi" to R.string.ps_lang_hi,
-    "hmn" to R.string.ps_lang_hmn,
-    "hu" to R.string.ps_lang_hu,
-    "is" to R.string.ps_lang_is,
-    "ig" to R.string.ps_lang_ig,
-    "id" to R.string.ps_lang_id,
-    "ga" to R.string.ps_lang_ga,
-    "it" to R.string.ps_lang_it,
-    "ja" to R.string.ps_lang_ja,
-    "jw" to R.string.ps_lang_jw,
-    "kn" to R.string.ps_lang_kn,
-    "kk" to R.string.ps_lang_kk,
-    "km" to R.string.ps_lang_km,
-    "ko" to R.string.ps_lang_ko,
-    "ku" to R.string.ps_lang_ku,
-    "ky" to R.string.ps_lang_ky,
-    "lo" to R.string.ps_lang_lo,
-    "la" to R.string.ps_lang_la,
-    "lv" to R.string.ps_lang_lv,
-    "lt" to R.string.ps_lang_lt,
-    "lb" to R.string.ps_lang_lb,
-    "mk" to R.string.ps_lang_mk,
-    "mg" to R.string.ps_lang_mg,
-    "ms" to R.string.ps_lang_ms,
-    "ml" to R.string.ps_lang_ml,
-    "mt" to R.string.ps_lang_mt,
-    "mi" to R.string.ps_lang_mi,
-    "mr" to R.string.ps_lang_mr,
-    "mn" to R.string.ps_lang_mn,
-    "my" to R.string.ps_lang_my,
-    "ne" to R.string.ps_lang_ne,
-    "no" to R.string.ps_lang_no,
-    "ps" to R.string.ps_lang_ps,
-    "fa" to R.string.ps_lang_fa,
-    "pl" to R.string.ps_lang_pl,
-    "pt" to R.string.ps_lang_pt,
-    "pa" to R.string.ps_lang_pa,
-    "ro" to R.string.ps_lang_ro,
-    "ru" to R.string.ps_lang_ru,
-    "sm" to R.string.ps_lang_sm,
-    "gd" to R.string.ps_lang_gd,
-    "sr" to R.string.ps_lang_sr,
-    "st" to R.string.ps_lang_st,
-    "sn" to R.string.ps_lang_sn,
-    "sd" to R.string.ps_lang_sd,
-    "si" to R.string.ps_lang_si,
-    "sk" to R.string.ps_lang_sk,
-    "sl" to R.string.ps_lang_sl,
-    "so" to R.string.ps_lang_so,
-    "es" to R.string.ps_lang_es,
-    "su" to R.string.ps_lang_su,
-    "sw" to R.string.ps_lang_sw,
-    "sv" to R.string.ps_lang_sv,
-    "tg" to R.string.ps_lang_tg,
-    "ta" to R.string.ps_lang_ta,
-    "te" to R.string.ps_lang_te,
-    "th" to R.string.ps_lang_th,
-    "tr" to R.string.ps_lang_tr,
-    "uk" to R.string.ps_lang_uk,
-    "ur" to R.string.ps_lang_ur,
-    "uz" to R.string.ps_lang_uz,
-    "vi" to R.string.ps_lang_vi,
-    "cy" to R.string.ps_lang_cy,
-    "xh" to R.string.ps_lang_xh,
-    "yi" to R.string.ps_lang_yi,
-    "yo" to R.string.ps_lang_yo,
-    "zu" to R.string.ps_lang_zu,
-)
 
 /** Every language with its name in the app's language, A to Z for that language. */
 @Composable
-private fun rememberTranslationTargets(): List<Pair<String, String>> {
-    val context = LocalContext.current
+internal fun rememberTranslationTargets(): List<Pair<String, String>> {
     val configuration = LocalConfiguration.current
-    return remember(configuration) {
+    // the list lives in shared (TranslationTargets.kt) so desktop offers the same languages; the names
+    // are the same app strings, read through the bridge
+    val named = com.mochyy.mochymusic.shared.lyrics.translationTargetIds.map { (code, res) ->
+        code to org.jetbrains.compose.resources.stringResource(res)
+    }
+    return remember(configuration, named) {
         val collator = java.text.Collator.getInstance(java.util.Locale.getDefault())
-        TranslationTargetIds
-            .map { (code, res) -> code to context.getString(res) }
-            .sortedWith { a, b -> collator.compare(a.second, b.second) }
+        named.sortedWith { a, b -> collator.compare(a.second, b.second) }
     }
 }
 
@@ -693,7 +601,7 @@ private fun rememberYouTubeTranslationLanguages(): Set<String> {
             artist = metadata.artists.joinToString { it.name },
             isVideo = metadata.isVideoSong,
             lines = lines,
-            targets = TranslationTargetIds.map { it.first },
+            targets = com.mochyy.mochymusic.shared.lyrics.translationTargetIds.map { it.first },
         )
     }
     return languages
@@ -727,7 +635,7 @@ private val YouTubeTranslationGreen = Color(0xFF93F58A)
  * "Vietnamese".
  */
 @Composable
-private fun LanguagePickerSheet(
+internal fun LanguagePickerSheet(
     title: String,
     selected: String,
     onPick: (String) -> Unit,

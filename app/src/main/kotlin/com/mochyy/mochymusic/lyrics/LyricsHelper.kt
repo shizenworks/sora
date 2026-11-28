@@ -575,6 +575,7 @@ constructor(
             KuGouLyricsProvider.name,
             NetEaseLyricsProvider.name,
             QQMusicLyricsProvider.name,
+            BetterLyricsPortatoProvider.name, // its endpoint serves QQ Music lyrics
         )
 
         /** Marks a language key as a Latin-script language: "latin:en", "latin:id". */

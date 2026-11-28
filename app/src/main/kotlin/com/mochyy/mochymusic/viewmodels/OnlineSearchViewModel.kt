@@ -2,11 +2,12 @@
 
 package com.mochyy.mochymusic.viewmodels
 
-import android.content.Context
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -19,20 +20,14 @@ import com.mochyy.mochymusic.constants.HideExplicitKey
 import com.mochyy.mochymusic.constants.HideVideoSongsKey
 import com.mochyy.mochymusic.constants.HideYoutubeShortsKey
 import com.mochyy.mochymusic.models.ItemsPage
-import com.mochyy.mochymusic.utils.dataStore
 import com.mochyy.mochymusic.utils.get
 import com.mochyy.mochymusic.utils.reportException
-import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
-@HiltViewModel
-class OnlineSearchViewModel
-@Inject
-constructor(
-    @ApplicationContext val context: Context,
+// Koin builds it (di/koin/OnlineKoin.kt); filters and paging stay with the app's SearchFilter and ItemsPage
+class OnlineSearchViewModel(
+    private val preferences: DataStore<Preferences>,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
     // navigation already decoded it, decoding again turned a typed + into a space
@@ -49,9 +44,9 @@ constructor(
                         YouTube
                             .searchSummary(query)
                             .onSuccess {
-                                val hideExplicit = context.dataStore.get(HideExplicitKey, false)
-                                val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
-                                val hideYoutubeShorts = context.dataStore.get(HideYoutubeShortsKey, true)
+                                val hideExplicit = preferences.get(HideExplicitKey, false)
+                                val hideVideoSongs = preferences.get(HideVideoSongsKey, false)
+                                val hideYoutubeShorts = preferences.get(HideYoutubeShortsKey, true)
                                 summaryPage =
                                     it.filterExplicit(
                                         hideExplicit,
@@ -65,9 +60,9 @@ constructor(
                         YouTube
                             .search(query, filter)
                             .onSuccess { result ->
-                                val hideExplicit = context.dataStore.get(HideExplicitKey, false)
-                                val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
-                                val hideYoutubeShorts = context.dataStore.get(HideYoutubeShortsKey, true)
+                                val hideExplicit = preferences.get(HideExplicitKey, false)
+                                val hideVideoSongs = preferences.get(HideVideoSongsKey, false)
+                                val hideYoutubeShorts = preferences.get(HideYoutubeShortsKey, true)
                                 viewStateMap[filter.value] =
                                     ItemsPage(
                                         result.items
@@ -101,9 +96,9 @@ constructor(
             if (continuation != null) {
                 val searchResult =
                     YouTube.searchContinuation(continuation).getOrNull() ?: return@launch
-                val hideExplicit = context.dataStore.get(HideExplicitKey, false)
-                val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
-                val hideYoutubeShorts = context.dataStore.get(HideYoutubeShortsKey, true)
+                val hideExplicit = preferences.get(HideExplicitKey, false)
+                val hideVideoSongs = preferences.get(HideVideoSongsKey, false)
+                val hideYoutubeShorts = preferences.get(HideYoutubeShortsKey, true)
                 val newItems = searchResult.items
                     .filterExplicit(hideExplicit)
                     .filterVideoSongs(hideVideoSongs)

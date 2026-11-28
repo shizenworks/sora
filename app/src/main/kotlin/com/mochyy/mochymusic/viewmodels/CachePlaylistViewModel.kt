@@ -10,14 +10,10 @@ import com.mochyy.mochymusic.constants.HideExplicitKey
 import com.mochyy.mochymusic.constants.HideVideoSongsKey
 import com.mochyy.mochymusic.db.MusicDatabase
 import com.mochyy.mochymusic.db.entities.Song
-import com.mochyy.mochymusic.di.DownloadCache
-import com.mochyy.mochymusic.di.PlayerCache
 import com.mochyy.mochymusic.extensions.filterExplicit
 import com.mochyy.mochymusic.extensions.filterVideoSongs
 import com.mochyy.mochymusic.utils.dataStore
 import com.mochyy.mochymusic.utils.get
-import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
@@ -25,15 +21,13 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
-import java.time.LocalDateTime
-import javax.inject.Inject
+import com.mochyy.mochymusic.db.nowLocal
 
-@HiltViewModel
-class CachePlaylistViewModel @Inject constructor(
-    @ApplicationContext private val context: Context,
+class CachePlaylistViewModel constructor(
+    private val context: Context,
     private val database: MusicDatabase,
-    @PlayerCache private val playerCache: SimpleCache,
-    @DownloadCache private val downloadCache: SimpleCache
+    private val playerCache: SimpleCache,
+    private val downloadCache: SimpleCache
 ) : ViewModel() {
 
     // polls only while the cache playlist screen is visible and off the main thread
@@ -60,7 +54,7 @@ class CachePlaylistViewModel @Inject constructor(
                 database.query {
                     completeSongs.forEach {
                         if (it.song.dateDownload == null) {
-                            update(it.song.copy(dateDownload = LocalDateTime.now()))
+                            update(it.song.copy(dateDownload = nowLocal()))
                         }
                     }
                 }

@@ -2,6 +2,7 @@
 
 package com.mochyy.mochymusic.utils
 
+import com.mochyy.mochymusic.constants.CustomAiApiKey
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import com.mochyy.mochymusic.constants.DataSyncIdKey
@@ -15,6 +16,7 @@ import com.mochyy.mochymusic.constants.LibreFmSessionKey
 import com.mochyy.mochymusic.constants.MonochromePlaybackApiTokenKey
 import com.mochyy.mochymusic.constants.OpenRouterApiKey
 import com.mochyy.mochymusic.constants.ProxyPasswordKey
+import com.mochyy.mochymusic.constants.SavedAccountsKey
 import com.mochyy.mochymusic.constants.TurnstileBypassTokenKey
 import com.mochyy.mochymusic.constants.VisitorDataKey
 import kotlinx.coroutines.flow.Flow
@@ -43,12 +45,14 @@ class SecretPreferences(private val raw: DataStore<Preferences>) : DataStore<Pre
             InnerTubeCookieKey,
             VisitorDataKey,
             DataSyncIdKey,
+            SavedAccountsKey,
             DiscordAccessTokenKey,
             DiscordRefreshTokenKey,
             LastFMSessionKey,
             ListenBrainzTokenKey,
             LibreFmSessionKey,
             OpenRouterApiKey,
+            CustomAiApiKey,
             DeeplApiKey,
             MonochromePlaybackApiTokenKey,
             TurnstileBypassTokenKey,

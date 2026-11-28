@@ -29,7 +29,7 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import org.koin.compose.viewmodel.koinViewModel
 import androidx.navigation.NavController
 import com.mochyy.mochymusic.LocalDatabase
 import com.mochyy.mochymusic.LocalPlayerConnection
@@ -80,7 +80,7 @@ fun SearchSidePane(
     val offlineMode by rememberPreference(OfflineModeKey, defaultValue = false)
     val profilePicStr by rememberPreference(ProfilePicUriKey, defaultValue = "")
 
-    val suggestionViewModel: OnlineSearchSuggestionViewModel = hiltViewModel()
+    val suggestionViewModel: OnlineSearchSuggestionViewModel = koinViewModel()
     val suggestionState by suggestionViewModel.viewState.collectAsState()
     LaunchedEffect(query.text) { suggestionViewModel.query.value = query.text }
 

@@ -19,16 +19,6 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 
-enum class LinkSource(val label: String, val example: String) {
-    SPOTIFY("Spotify", "https://open.spotify.com/playlist/…"),
-    APPLE_MUSIC("Apple Music", "https://music.apple.com/us/playlist/…"),
-    DEEZER("Deezer", "https://www.deezer.com/playlist/…"),
-    YOUTUBE("YouTube Music", "https://music.youtube.com/playlist?list=…"),
-    SOUNDCLOUD("SoundCloud", "https://soundcloud.com/…/sets/…"),
-}
-
-class LinkImportException(message: String) : Exception(message)
-
 /** reads a public playlist or album from a share link without logging in, private playlists aren't reachable so those go through tunemymusic */
 object LinkImporter {
 
@@ -56,17 +46,7 @@ object LinkImporter {
     private val SHORT_LINK_HOSTS = listOf("spotify.link", "spotify.app.link", "deezer.page.link", "link.deezer.com", "on.soundcloud.com")
 
     /** works out which service a pasted link belongs to, or null if it isn't one we read */
-    fun detect(link: String): LinkSource? {
-        val text = link.trim()
-        return when {
-            text.contains("spotify") -> LinkSource.SPOTIFY
-            text.contains("music.apple.com") -> LinkSource.APPLE_MUSIC
-            text.contains("deezer") -> LinkSource.DEEZER
-            text.contains("soundcloud.com") -> LinkSource.SOUNDCLOUD
-            text.contains("youtube.com") || text.contains("youtu.be") -> LinkSource.YOUTUBE
-            else -> null
-        }
-    }
+    fun detect(link: String): LinkSource? = detectLinkSource(link)
 
     suspend fun fetch(link: String): ParsedImport {
         val text = extractUrl(link.trim()) ?: throw LinkImportException("That doesn't look like a link.")

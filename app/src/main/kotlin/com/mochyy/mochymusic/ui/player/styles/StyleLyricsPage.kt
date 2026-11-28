@@ -67,6 +67,7 @@ fun StyleLyricsPage(
         modifier = modifier,
         onCoveredChange = onCoveredChange,
         modulateAlpha = true,
+        headerEndPadding = 72.dp,
     ) { nav, backgroundStyle ->
         LyricsScreen(
             onClose = onClose,
@@ -106,6 +107,7 @@ private fun StyleOverlayPage(
     onCoveredChange: (Boolean) -> Unit,
     // the rows fade one by one instead of in one buffer, which would cut soft-lit lyrics off from the background
     modulateAlpha: Boolean = false,
+    headerEndPadding: Dp = 24.dp,
     content: @Composable (nav: Dp, backgroundStyle: com.mochyy.mochymusic.constants.PlayerBackgroundStyle) -> Unit,
 ) {
     val shown = remember { Animatable(0f) }
@@ -162,7 +164,7 @@ private fun StyleOverlayPage(
                 modifier = Modifier
                     .fillMaxWidth()
                     .stableStatusBarsPadding()
-                    .padding(start = LyricsHeaderArtX, top = LyricsHeaderArtTopFromStatusBar, end = 24.dp),
+                    .padding(start = LyricsHeaderArtX, top = LyricsHeaderArtTopFromStatusBar, end = headerEndPadding),
             ) {
                 androidx.compose.foundation.layout.Row(verticalAlignment = Alignment.CenterVertically) {
                     AsyncImage(

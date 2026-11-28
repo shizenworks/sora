@@ -19,7 +19,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import org.koin.compose.viewmodel.koinViewModel
 import com.mochyy.mochymusic.LocalDatabase
 import com.mochyy.mochymusic.R
 import com.mochyy.mochymusic.db.entities.Song
@@ -58,7 +58,7 @@ internal fun TvRecapScreen() {
 // a mood or genre from search: its rows of playlists and albums
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-internal fun TvBrowseScreen(viewModel: GenreViewModel = hiltViewModel()) {
+internal fun TvBrowseScreen(viewModel: GenreViewModel = koinViewModel()) {
     val result by viewModel.result.collectAsState()
     CompositionLocalProvider(LocalBringIntoViewSpec provides TvColumnPivot) {
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = TvSpace.Top, bottom = 48.dp)) {

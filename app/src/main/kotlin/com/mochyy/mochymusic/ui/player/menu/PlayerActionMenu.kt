@@ -55,7 +55,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import org.koin.compose.viewmodel.koinViewModel
 import androidx.media3.exoplayer.offline.DownloadRequest
 import androidx.media3.exoplayer.offline.DownloadService
 import coil3.compose.AsyncImage
@@ -71,6 +71,7 @@ import com.mochyy.mochymusic.constants.TranslateLanguageKey
 import com.mochyy.mochymusic.constants.VideoQuality
 import com.mochyy.mochymusic.constants.VideoQualityKey
 import com.mochyy.mochymusic.lyrics.LyricsTranslationHelper
+import com.mochyy.mochymusic.ui.player.info.ForceProviderSheet
 import com.mochyy.mochymusic.ui.menu.songedit.SongEditSheet
 import com.mochyy.mochymusic.ui.menu.songedit.VideoPickerSheet
 import com.mochyy.mochymusic.ui.player.PlayerCanvasPlayback
@@ -136,6 +137,7 @@ fun PlayerActionMenu(
     var showChoosePlaylistDialog by remember { mutableStateOf(false) }
     var showSleepTimer by remember { mutableStateOf(false) }
     var showAudioDevices by remember { mutableStateOf(false) }
+    var showPlaybackSources by remember { mutableStateOf(false) }
     var showPlaybackSpeed by remember { mutableStateOf(false) }
     var showLyricsEditor by remember { mutableStateOf(false) }
     var showLyricsProvider by remember { mutableStateOf(false) }
@@ -151,9 +153,9 @@ fun PlayerActionMenu(
     val translateTarget by rememberPreference(TranslateLanguageKey, defaultValue = "en")
     val translationOn by LyricsTranslationHelper.translationOn.collectAsState()
 
-    // Only touched by the lyrics section. hiltViewModel() itself is cheap, but the flows are
+    // Only touched by the lyrics section. koinViewModel() itself is cheap, but the flows are
     // collected lazily so a menu opened from the player does no lyrics work at all.
-    val lyricsMenuViewModel: com.mochyy.mochymusic.viewmodels.LyricsMenuViewModel = hiltViewModel()
+    val lyricsMenuViewModel: com.mochyy.mochymusic.viewmodels.LyricsMenuViewModel = koinViewModel()
     val lyricsMetadata by playerConnection.mediaMetadata.collectAsState()
     val lyricsEntity by playerConnection.currentLyrics.collectAsState(initial = null)
 
@@ -400,6 +402,14 @@ fun PlayerActionMenu(
                     title = stringResource(R.string.menu_change_output),
                     onClick = { showAudioDevices = true },
                 )
+                if (currentMetadata != null && currentMetadata?.localUri == null) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    MenuRow(
+                        icon = R.drawable.graphic_eq,
+                        title = stringResource(R.string.pc_switch_source),
+                        onClick = { showPlaybackSources = true },
+                    )
+                }
                 // a linked tv with mochy open: play there, line it up there, or work it as a remote
                 DeviceMenuRows(onDismiss = onDismiss)
                 Spacer(modifier = Modifier.height(8.dp))
@@ -517,6 +527,13 @@ fun PlayerActionMenu(
     }
     if (showSleepTimer) {
         SleepTimerSheet(onDismiss = { showSleepTimer = false })
+    }
+    if (showPlaybackSources) {
+        val playingFrom by playerConnection.service.playingFrom.collectAsState()
+        ForceProviderSheet(
+            currentProviderId = currentMetadata?.id?.let { playingFrom[it]?.providerId },
+            onDismiss = { showPlaybackSources = false },
+        )
     }
     if (showAudioDevices) {
         DeviceOutputSheet(onDismiss = { showAudioDevices = false })

@@ -19,16 +19,20 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.IOException
 import java.net.Authenticator
+import java.net.ConnectException
 import java.net.InetSocketAddress
+import java.net.NoRouteToHostException
 import java.net.PasswordAuthentication
 import java.net.Proxy
 import java.net.ProxySelector
 import java.net.SocketAddress
+import java.net.SocketTimeoutException
 import java.net.URI
+import java.net.UnknownHostException
 import java.util.concurrent.TimeUnit
 
 data class ProxyConfig(
-    val type: Proxy.Type,
+    val type: ProxyType,
     val address: InetSocketAddress,
     val username: String,
     val password: String,
@@ -75,7 +79,7 @@ object AppProxy {
         if (requireEnabled && settings[ProxyEnabledKey] != true) return null
         val address = parseAddress(settings[ProxyUrlKey].orEmpty()) ?: return null
         return ProxyConfig(
-            type = settings[ProxyTypeKey].toEnum(defaultValue = Proxy.Type.HTTP),
+            type = settings[ProxyTypeKey].toEnum(defaultValue = ProxyType.HTTP),
             address = address,
             username = settings[ProxyUsernameKey].orEmpty(),
             password = settings[ProxyPasswordKey].orEmpty(),
@@ -85,42 +89,41 @@ object AppProxy {
     /** sends youtube through config, or straight out when it's null, false when nothing changed */
     fun apply(config: ProxyConfig?): Boolean {
         if (config == current) return false
-        YouTube.proxyAuth = config?.takeIf { it.type == Proxy.Type.HTTP && it.hasLogin }
+        YouTube.proxyAuth = config?.takeIf { it.type == ProxyType.HTTP && it.hasLogin }
             ?.let { Credentials.basic(it.username, it.password) }
         useSocksLogin(config)
         // after the login: the youtube client rebuilds itself here and takes the login with it
-        YouTube.proxy = config?.let { Proxy(it.type, it.address) }
+        YouTube.proxy = config?.let { Proxy(it.type.toJavaProxyType(), it.address) }
         current = config
         connectionPool.evictAll()
         return true
     }
 
     /** reads "1.2.3.4:8080", "proxy.example.com:1080" or "[2001:db8::1]:3128", skipping a pasted scheme or login in front */
-    fun parseAddress(text: String): InetSocketAddress? {
-        val hostPort = text.trim().substringAfter("://").substringAfterLast('@').trimEnd('/')
-        val port = hostPort.substringAfterLast(':', "").toIntOrNull()?.takeIf { it in 1..65535 } ?: return null
-        val host = if (hostPort.startsWith("[")) {
-            hostPort.substringAfter('[').substringBefore(']')
-        } else {
-            hostPort.substringBeforeLast(':')
-        }
-        if (host.isBlank()) return null
+    fun parseAddress(text: String): InetSocketAddress? =
         // unresolved: the proxy's name is looked up when connecting, never here on the main thread
-        return InetSocketAddress.createUnresolved(host, port)
-    }
+        parseProxyAddress(text)?.let { InetSocketAddress.createUnresolved(it.host, it.port) }
 
     /** the address as people write it, an ipv6 host in brackets so its port stays readable */
-    fun addressLabel(address: InetSocketAddress): String =
-        if (':' in address.hostString) "[${address.hostString}]:${address.port}" else "${address.hostString}:${address.port}"
+    fun addressLabel(address: InetSocketAddress): String = proxyAddressLabel(address.hostString, address.port)
+
+    /** the settings page's check button: a real request through the proxy, and the reason when it fails */
+    val tester = object : ProxyTester {
+        override suspend fun test(type: ProxyType, address: ProxyAddress, username: String, password: String): ProxyCheckResult =
+            check(ProxyConfig(type, InetSocketAddress.createUnresolved(address.host, address.port), username, password)).fold(
+                onSuccess = { ProxyCheckResult.Passed(it) },
+                onFailure = { ProxyCheckResult.Failed(it.checkFailure()) },
+            )
+    }
 
     /** asks youtube for an empty page through config, how many ms it took or why it failed */
     suspend fun check(config: ProxyConfig): Result<Long> = withContext(Dispatchers.IO) {
         runCatching {
             useSocksLogin(config)
             val client = sharedClient.newBuilder()
-                .proxy(Proxy(config.type, config.address))
+                .proxy(Proxy(config.type.toJavaProxyType(), config.address))
                 .proxyAuthenticator { _, response ->
-                    if (config.type != Proxy.Type.HTTP || !config.hasLogin || response.request.header(ProxyAuthHeader) != null) {
+                    if (config.type != ProxyType.HTTP || !config.hasLogin || response.request.header(ProxyAuthHeader) != null) {
                         null
                     } else {
                         response.request.newBuilder().header(ProxyAuthHeader, Credentials.basic(config.username, config.password)).build()
@@ -139,7 +142,7 @@ object AppProxy {
 
     // socks has no header for a login, java asks this one global authenticator instead
     private fun useSocksLogin(config: ProxyConfig?) {
-        val login = config?.takeIf { it.type == Proxy.Type.SOCKS && it.hasLogin }
+        val login = config?.takeIf { it.type == ProxyType.SOCKS && it.hasLogin }
         Authenticator.setDefault(
             login?.let {
                 object : Authenticator() {
@@ -154,6 +157,20 @@ private const val ProxyAuthHeader = "Proxy-Authorization"
 
 // the proxy or youtube answered the check with an error code, 407 means the proxy wants a sign-in
 class ProxyRefusedException(val code: Int) : IOException("HTTP $code")
+
+// java.net's two protocols, from the names the settings store keeps
+private fun ProxyType.toJavaProxyType(): Proxy.Type = when (this) {
+    ProxyType.HTTP -> Proxy.Type.HTTP
+    ProxyType.SOCKS -> Proxy.Type.SOCKS
+}
+
+// the line the settings page shows, from what the check ran into
+private fun Throwable.checkFailure(): ProxyFailure = when (this) {
+    is UnknownHostException -> ProxyFailure.HostNotFound
+    is ProxyRefusedException -> if (code == 407) ProxyFailure.LoginRequired else ProxyFailure.Failed
+    is ConnectException, is SocketTimeoutException, is NoRouteToHostException -> ProxyFailure.NoAnswer
+    else -> ProxyFailure.Failed
+}
 
 /** sends this client through the proxy and the DNS over HTTPS choice from settings, read on every request and lookup */
 fun OkHttpClient.Builder.followAppProxy(): OkHttpClient.Builder =

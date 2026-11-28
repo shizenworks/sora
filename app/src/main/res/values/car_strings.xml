@@ -1,6 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- android auto -->
+    <string name="car_settings_title">Android Auto</string>
+    <string name="car_settings_integration_desc">Connection, content and artwork settings for the car</string>
+    <string name="car_settings_connection">Connection</string>
+    <string name="car_settings_projected">Connected to Android Auto</string>
+    <string name="car_settings_native">Running on Android Automotive</string>
+    <string name="car_settings_disconnected">Not connected</string>
+    <string name="car_settings_content">Content</string>
+    <string name="car_settings_recommendations">Online recommendations</string>
+    <string name="car_settings_recommendations_desc">Show suggested mixes and collections on the car’s Home tab</string>
+    <string name="car_settings_device_songs">Songs on this device</string>
+    <string name="car_settings_device_songs_desc">Show a folder of songs saved on this phone in the car’s Library</string>
+    <string name="car_settings_voice">Online voice search</string>
+    <string name="car_settings_voice_desc">Look beyond your library when you ask for music in the car</string>
+    <string name="car_settings_lyrics">Lyrics on the car player</string>
+    <string name="car_settings_lyrics_desc">Show the current lyric on the car’s Now Playing screen</string>
+    <string name="car_settings_mobile_data">Mobile data</string>
+    <string name="car_settings_metered_streaming">Stream on mobile data</string>
+    <string name="car_settings_metered_streaming_desc">Play songs that aren’t saved on this phone when the car is on mobile data. Off plays only saved and cached songs there</string>
+    <string name="car_settings_artwork">Artwork on metered networks</string>
+    <string name="car_settings_artwork_desc">Fetch new album covers for the car over mobile or metered data</string>
     <string name="car_tab_home">Home</string>
     <string name="car_tab_remote">Remote</string>
     <string name="car_tab_recent">Recent</string>
@@ -16,17 +36,26 @@
 
     <string name="car_liked">Liked songs</string>
     <string name="car_downloaded">Downloaded</string>
+    <string name="car_device_songs">Songs on this device</string>
+    <string name="car_pinned_playlists">Pinned playlists</string>
+    <string name="car_settings_pinned_other">Other playlists</string>
+    <string name="car_pinned_move_up">Move up</string>
+    <string name="car_pinned_move_down">Move down</string>
+    <string name="car_pinned_remove">Unpin</string>
+    <string name="car_pinned_add">Pin</string>
     <string name="car_playlists">Playlists</string>
     <string name="car_albums">Albums</string>
     <string name="car_artists">Artists</string>
     <string name="car_list_empty">Nothing in here yet.</string>
+    <string name="car_metered_blocked">Streaming on mobile data is off in the car. Only songs saved on this phone can play.</string>
+    <string name="car_metered_partial">On mobile data only songs saved on this phone play. The rest were left out.</string>
     <string name="car_couldnt_load">Couldn\'t load this. Check your connection and try again.</string>
     <string name="car_shuffle">Shuffle</string>
 
     <string name="car_lyrics">Lyrics</string>
     <string name="car_lyrics_on_player">On the player</string>
     <string name="car_lyrics_none">No lyrics for this song.</string>
-    <string name="car_lyrics_player_on">lyrics now may show on the player while you drive, hey, its in beta!</string>
+    <string name="car_lyrics_player_on">Lyrics on the player are on. They may show while you drive.</string>
     <string name="car_lyrics_player_off">Lyrics on the player are off.</string>
 
     <string name="car_pair_code">Pairing code</string>

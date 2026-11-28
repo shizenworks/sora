@@ -20,6 +20,10 @@ object LyricsProviderRegistry {
         "QQMusic"         to QQMusicLyricsProvider,
         "Deezer"          to DeezerLyricsProvider,
         "LrcRed"          to LrcRedLyricsProvider,
+        "BiniLyrics"      to BiniLyricsProvider,
+        "Megalobiz"       to MegalobizLyricsProvider,
+        "BetterLyricsPortato" to BetterLyricsPortatoProvider,
+        "Genius"          to GeniusLyricsProvider,
         "YouTubeSubtitle" to YouTubeSubtitleLyricsProvider,
         "YouTubeMusic"    to YouTubeLyricsProvider,
         "YouTubeCaptions" to YouTubeCaptionsLyricsProvider,
@@ -94,19 +98,23 @@ object LyricsProviderRegistry {
     // timing. YouTube's auto captions last of all - they are speech recognition.
     fun getDefaultProviderOrder(): List<String> = (moduleProviders.keys + knownModules.keys).distinct() + listOf(
         "BetterLyrics",
+        "BetterLyricsPortato",
         "Unison",
         "YouLyPlus",
         "Paxsenix",
         "LrcRed",
+        "BiniLyrics",
         "SimpMusic",
         "Muzo",
         "LrcLib",
+        "Megalobiz",
         "Deezer",
         "YouTubeSubtitle",
         "YouTubeMusic",
         "NetEase",
         "QQMusic",
         "Kugou",
+        "Genius",
         "YouTubeCaptions",
     )
 
@@ -132,6 +140,10 @@ object LyricsProviderRegistry {
         "QQMusic"         -> "QQ Music"
         "Deezer"          -> "Deezer"
         "LrcRed"          -> "lrc.red"
+        "BiniLyrics"      -> "BiniLyrics"
+        "Megalobiz"       -> "Megalobiz"
+        "BetterLyricsPortato" -> "BetterLyrics Portato"
+        "Genius"          -> "Genius"
         "YouTubeSubtitle" -> "YouTube Subtitle"
         "YouTubeMusic"    -> "YouTube Music"
         "YouTubeCaptions" -> "YouTube Auto Captions"
@@ -156,6 +168,9 @@ object LyricsProviderRegistry {
     // lrc.red and unison require linking back wherever their lyrics are shown
     fun getWebsite(name: String): String? = when (name) {
         "LrcRed" -> LrcRed.BaseUrl
+        "BiniLyrics" -> "https://lyrics-api.binimum.org/"
+        "Megalobiz" -> "https://www.megalobiz.com/"
+        "Genius" -> "https://genius.com/"
         "Unison" -> Unison.BaseUrl
         else     -> null
     }

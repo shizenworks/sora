@@ -23,18 +23,6 @@ import com.mochyy.mochymusic.ui.component.SheetOptionRow
 import com.mochyy.mochymusic.ui.utils.stableSystemBars
 import com.mochyy.mochymusic.ui.component.sheetHandleRoom
 
-// how a size reads: "720p", and 4k by the name people know it by
-@Composable
-internal fun videoSizeName(shortSide: Int): String =
-    if (shortSide >= 2160) stringResource(R.string.video_quality_4k)
-    else stringResource(R.string.video_quality_size, shortSide)
-
-// how a quality reads in settings: "Auto", or the size itself
-@Composable
-internal fun videoQualityName(quality: VideoQuality): String =
-    if (quality == VideoQuality.AUTO) stringResource(R.string.video_quality_auto)
-    else videoSizeName(quality.shortSide)
-
 // picks how sharp youtube videos play, everywhere they show
 fun PopupSheetState.showVideoQualitySheet(selected: VideoQuality, onSelect: (VideoQuality) -> Unit) {
     var sheet: PopupSheetHandle? = null

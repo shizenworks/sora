@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- looper player style -->
+    <string name="looper_previous">Previous</string>
+    <string name="looper_next">Next</string>
+    <string name="looper_repeat">Repeat</string>
+    <string name="looper_lyrics">Lyrics</string>
+</resources>

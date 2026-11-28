@@ -114,6 +114,7 @@
             android:name=".MainActivity"
             android:exported="true"
             android:launchMode="singleTask"
+            android:supportsPictureInPicture="true"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden"
             android:theme="@style/Theme.App.Starting"
             android:windowSoftInputMode="adjustResize">
@@ -1100,24 +1101,6 @@
             </intent-filter>
         </activity>
 
-        <!-- the module feed's discord sign-in sends the browser back here with a session -->
-        <activity
-            android:name=".modules.browser.ModuleBrowserLoginActivity"
-            android:exported="true"
-            android:excludeFromRecents="true"
-            android:launchMode="singleTask"
-            android:noHistory="true"
-            android:taskAffinity=""
-            android:theme="@android:style/Theme.Translucent.NoTitleBar">
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-
-                <data android:scheme="mochy-modules" android:host="signed-in" />
-            </intent-filter>
-        </activity>
 
         <service
             android:name=".playback.MusicService"

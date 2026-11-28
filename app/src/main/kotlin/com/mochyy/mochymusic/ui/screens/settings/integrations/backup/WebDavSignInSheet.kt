@@ -31,11 +31,11 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mochyy.mochymusic.R
-import com.mochyy.mochymusic.backup.CloudAccount
 import com.mochyy.mochymusic.ui.component.SheetLabel
 import com.mochyy.mochymusic.ui.component.SheetPillButton
 import com.mochyy.mochymusic.ui.component.SheetTextField
 import com.mochyy.mochymusic.ui.screens.search.SearchColors
+import com.mochyy.mochymusic.viewmodels.BackupAccount
 import com.mochyy.mochymusic.viewmodels.CloudBackupViewModel
 import kotlinx.coroutines.launch
 
@@ -45,7 +45,7 @@ private val ProblemColor = Color(0xFFFF8A80)
 internal fun WebDavSignInContent(
     viewModel: CloudBackupViewModel,
     // the server already connected, so changing a password doesn't mean typing the address again
-    current: CloudAccount?,
+    current: BackupAccount?,
     onConnected: (host: String) -> Unit,
 ) {
     val scope = rememberCoroutineScope()

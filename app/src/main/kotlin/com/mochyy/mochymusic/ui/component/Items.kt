@@ -743,8 +743,8 @@ fun PlaylistListItem(
         if (playlist.songCount == 0 && playlist.playlist.remoteSongCount != null) {
             pluralStringResource(
                 R.plurals.n_song,
-                playlist.playlist.remoteSongCount,
-                playlist.playlist.remoteSongCount
+                playlist.playlist.remoteSongCount!!,
+                playlist.playlist.remoteSongCount!!
             )
         } else {
             pluralStringResource(
@@ -820,8 +820,8 @@ fun PlaylistGridItem(
             if (playlist.songCount == 0 && playlist.playlist.remoteSongCount != null) {
                 pluralStringResource(
                     R.plurals.n_song,
-                    playlist.playlist.remoteSongCount,
-                    playlist.playlist.remoteSongCount
+                    playlist.playlist.remoteSongCount!!,
+                    playlist.playlist.remoteSongCount!!
                 )
             } else {
                 pluralStringResource(

@@ -64,7 +64,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import org.koin.compose.viewmodel.koinViewModel
 import android.os.Build
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
@@ -123,7 +123,7 @@ private val SearchCategories = listOf(
 @Composable
 fun OnlineSearchResult(
     navController: NavController,
-    viewModel: OnlineSearchViewModel = hiltViewModel(),
+    viewModel: OnlineSearchViewModel = koinViewModel(),
     pureBlack: Boolean = false,
 ) {
     val database = LocalDatabase.current
