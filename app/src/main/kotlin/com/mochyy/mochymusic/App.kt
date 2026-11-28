@@ -90,6 +90,7 @@ class App : Application(), SingletonImageLoader.Factory {
         AppLanguage.initialize(this)
         // the shared font state starts on the system font until it has the app's own inter
         com.mochyy.mochymusic.ui.theme.AppFont.inter = com.mochyy.mochymusic.ui.theme.AndroidInter
+        com.mochyy.mochymusic.ui.component.pageMediaTurns = { com.mochyy.mochymusic.ui.motion.motionOn() }
 
         // share one okhttp connection pool and dispatcher between innertube, coil, and the rest of the app
         YouTube.configureSharedPool(AppProxy.connectionPool, AppProxy.dispatcher)

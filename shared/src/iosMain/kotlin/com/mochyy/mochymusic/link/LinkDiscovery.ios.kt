@@ -1,9 +1,10 @@
-@file:OptIn(kotlinx.cinterop.ExperimentalForeignApi::class)
+@file:OptIn(kotlinx.cinterop.ExperimentalForeignApi::class, kotlinx.cinterop.BetaInteropApi::class)
 
 // LinkDiscovery.ios.kt
 
 package com.mochyy.mochymusic.link
 
+import kotlinx.cinterop.ObjCSignatureOverride
 import kotlinx.cinterop.addressOf
 import kotlinx.cinterop.usePinned
 import kotlinx.coroutines.channels.awaitClose
@@ -14,6 +15,7 @@ import platform.Foundation.NSNetService
 import platform.Foundation.NSNetServiceBrowser
 import platform.Foundation.NSNetServiceBrowserDelegateProtocol
 import platform.Foundation.NSNetServiceDelegateProtocol
+import platform.Foundation.create
 import platform.darwin.NSObject
 import platform.posix.memcpy
 
@@ -25,7 +27,7 @@ actual class LinkAdvert actual constructor(
     port: Int,
     attributes: Map<String, String>,
 ) {
-    private val service = NSNetService(domain = "local.", type = type, name = name.take(60), port = port.toLong())
+    private val service = NSNetService(domain = "local.", type = type, name = name.take(60), port = port)
 
     init {
         runCatching {
@@ -51,6 +53,7 @@ actual fun discoverPeers(platformContext: Any, type: String): Flow<List<LinkPeer
     }
 
     val delegate = object : NSObject(), NSNetServiceBrowserDelegateProtocol {
+        @ObjCSignatureOverride
         override fun netServiceBrowser(browser: NSNetServiceBrowser, didFindService: NSNetService, moreComing: Boolean) {
             val service = didFindService
             services[service.name] = service
@@ -68,6 +71,7 @@ actual fun discoverPeers(platformContext: Any, type: String): Flow<List<LinkPeer
             service.resolveWithTimeout(5.0)
         }
 
+        @ObjCSignatureOverride
         override fun netServiceBrowser(browser: NSNetServiceBrowser, didRemoveService: NSNetService, moreComing: Boolean) {
             services.remove(didRemoveService.name)
             resolvers.remove(didRemoveService.name)
@@ -95,7 +99,7 @@ private fun peerOf(service: NSNetService): LinkPeer? {
 
 // the TXT record is length-prefixed "key=value" entries, exactly what NsdManager's attributes become
 private fun NSNetService.attribute(key: String): String? {
-    val data = TXTRecordData ?: return null
+    val data = TXTRecordData() ?: return null
     val length = data.length.toInt()
     if (length <= 0) return null
     val bytes = ByteArray(length)

@@ -106,6 +106,11 @@ open class StorePreferencesCache internal constructor() {
         readFailed = false
         snapshotState.value = prefs
     }
+
+
+    fun edit(store: DataStore<Preferences>, block: (androidx.datastore.preferences.core.MutablePreferences) -> Unit) {
+        writeScope.launch { store.edit { block(it) } }
+    }
 }
 
 /** The one cache the app's compositions read, warmed by the platform at start-up. */
@@ -114,10 +119,6 @@ object PreferencesCache : StorePreferencesCache()
 /** The app's settings store for this composition. */
 val LocalAppPreferences: ProvidableCompositionLocal<DataStore<Preferences>> = staticCompositionLocalOf {
     PreferencesCache.store ?: error("No app preferences: provide LocalAppPreferences or start PreferencesCache")
-
-    fun edit(store: DataStore<Preferences>, block: (androidx.datastore.preferences.core.MutablePreferences) -> Unit) {
-        writeScope.launch { store.edit { block(it) } }
-    }
 }
 
 @Composable

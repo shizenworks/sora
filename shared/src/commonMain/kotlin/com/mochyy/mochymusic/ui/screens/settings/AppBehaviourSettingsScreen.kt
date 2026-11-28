@@ -18,7 +18,6 @@ import com.mochyy.mochymusic.constants.HideExplicitKey
 import com.mochyy.mochymusic.constants.HideSettingsDescriptionsKey
 import com.mochyy.mochymusic.constants.HideUpdateNoticeKey
 import com.mochyy.mochymusic.constants.HideVideoSongsKey
-import com.mochyy.mochymusic.constants.LocalSongAutoMetadataKey
 import com.mochyy.mochymusic.constants.OfflineModeKey
 import com.mochyy.mochymusic.constants.PauseListenHistoryKey
 import com.mochyy.mochymusic.constants.PauseSearchHistoryKey
@@ -265,7 +264,6 @@ private fun libraryItems(): List<SettingsItem> {
     val (pauseListenHistory, onPauseListenHistoryChange) = rememberPreference(PauseListenHistoryKey, defaultValue = false)
     val (disableScreenshot, onDisableScreenshotChange) = rememberPreference(DisableScreenshotKey, defaultValue = false)
     val (albumsFromLikes, onAlbumsFromLikesChange) = rememberPreference(AlbumsFromLikedSongsKey, defaultValue = false)
-    val (autoMetadata, onAutoMetadataChange) = rememberPreference(LocalSongAutoMetadataKey, defaultValue = true)
     val (pauseSearchHistory, onPauseSearchHistoryChange) = rememberPreference(PauseSearchHistoryKey, defaultValue = false)
     val (reportPlays, onReportPlaysChange) = rememberPreference(YtReportPlaysKey, defaultValue = true)
     return listOf(
@@ -277,14 +275,6 @@ private fun libraryItems(): List<SettingsItem> {
             icon = painterResource(Res.drawable.album),
             checked = albumsFromLikes,
             onCheckedChange = onAlbumsFromLikesChange,
-        ),
-        switchItem(
-            key = "Local song auto metadata",
-            title = stringResource(Res.string.settings_local_auto_metadata),
-            description = stringResource(Res.string.settings_local_auto_metadata_desc),
-            icon = painterResource(Res.drawable.cached),
-            checked = autoMetadata,
-            onCheckedChange = onAutoMetadataChange,
         ),
         // stops new listens from being saved here and sent to YouTube history; the listens already saved stay
         switchItem(

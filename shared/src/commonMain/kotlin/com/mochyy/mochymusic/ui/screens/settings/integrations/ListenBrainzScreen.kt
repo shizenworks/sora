@@ -88,6 +88,7 @@ fun ListenBrainzScreen(navController: NavController) {
         onBack = { navController.navigateUp() },
         backLabel = stringResource(Res.string.integrations),
     ) {
+        com.mochyy.mochymusic.ui.component.PagePreview(com.mochyy.mochymusic.ui.component.SettingsPreviewPage.ListenBrainz)
         // SubSettingsScaffold already scrolls its content; a second verticalScroll inside it is measured
         // with an infinite height and throws
         Column(

@@ -5,7 +5,6 @@
 
 package com.mochyy.mochymusic.ui.screens.settings
 
-import com.mochyy.mochymusic.ui.screens.settings.previews.InternetPreview
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -139,8 +138,7 @@ fun InternetSettingsScreen(
         title = stringResource(Res.string.internet),
         onBack = { navController.navigateUp() },
     ) {
-        com.mochyy.mochymusic.ui.screens.gesture.PortedPreviewHeader { InternetPreview() }
-        androidx.compose.foundation.layout.Spacer(androidx.compose.ui.Modifier.height(16.dp))
+        com.mochyy.mochymusic.ui.component.PagePreview(com.mochyy.mochymusic.ui.component.SettingsPreviewPage.Internet)
         Column(
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {

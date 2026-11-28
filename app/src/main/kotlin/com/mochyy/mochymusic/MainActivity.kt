@@ -1010,6 +1010,8 @@ class MainActivity : ComponentActivity() {
                     SharedLocalPlayerConnection provides playerConnection,
                     LocalGlassState provides glassState,
                     com.mochyy.mochymusic.ui.component.liquid.LocalLiquidGlass provides liquidGlass,
+                    // the Android-only looks shared screens draw through
+                    com.mochyy.mochymusic.ui.component.LocalPlatformSkin provides com.mochyy.mochymusic.ui.rememberAndroidPlatformSkin(liquidGlass),
                     com.mochyy.mochymusic.ui.component.liquid.LocalAppBackdrop provides appBackdrop,
                     LocalHideAppChrome provides hideAppChrome,
                     LocalDetailAccentColor provides detailAccentColor,

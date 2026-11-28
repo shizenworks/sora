@@ -16,8 +16,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.mochyy.mochymusic.ui.component.liquid.LiquidGlassSlider
-import com.mochyy.mochymusic.ui.component.liquid.LocalLiquidGlass
 import kotlin.math.roundToInt
 
 /** A settings slider that uses the player's default rounded seek-bar treatment. */
@@ -31,17 +29,16 @@ fun DefaultPlayerSeekBarSlider(
     steps: Int = 0,
     enabled: Boolean = true,
 ) {
-    // the liquid glass sliders switch, when it is on, is the look of every slider in the app
-    val glass = LocalLiquidGlass.current
-    if (glass.surface(glass.sliders)) {
-        LiquidGlassSlider(
-            value = value,
-            onValueChange = { raw ->
-                onValueChange(if (steps > 0) snapToSteps(raw, valueRange, steps) else raw)
-            },
-            modifier = modifier.sliderDragScrollLock(),
-            valueRange = valueRange,
-            enabled = enabled,
+    // a platform slider look, when it is on, is the look of every slider in the app
+    val skinned = LocalPlatformSkin.current.slider
+    if (skinned != null) {
+        skinned(
+            value,
+            { raw -> onValueChange(if (steps > 0) snapToSteps(raw, valueRange, steps) else raw) },
+            modifier.sliderDragScrollLock(),
+            valueRange,
+            enabled,
+            null,
         )
         return
     }

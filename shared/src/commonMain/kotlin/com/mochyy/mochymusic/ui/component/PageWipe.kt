@@ -263,6 +263,9 @@ private fun featherStops(start: Float, inside: Color, outside: Color): Array<Pai
 
 private val FeatherEase = floatArrayOf(0f, 0.104f, 0.352f, 0.648f, 0.896f, 1f)
 
+/** whether a page's cover turns on its vertical axis as it leaves; the platform switches it on with its animations */
+var pageMediaTurns: () -> Boolean = { false }
+
 // the slide itself, inside a pinned page: the media drifts the way it used to, zoomed by just
 // enough to keep its edges off screen, so it settles from a slight push-in
 fun Modifier.pageMediaDrift(pageOffset: () -> Float, peek: Boolean = false): Modifier = if (peek) peekMediaDrift(pageOffset) else graphicsLayer {
@@ -272,7 +275,7 @@ fun Modifier.pageMediaDrift(pageOffset: () -> Float, peek: Boolean = false): Mod
     scaleY = scale
     translationX = d * size.width * PageMediaTravel
     // the cover turns away on its vertical axis as it leaves, up to 14°
-    if (com.mochyy.mochymusic.ui.motion.motionOn()) {
+    if (pageMediaTurns()) {
         rotationY = -d * 14f
         cameraDistance = 12f * density
     }

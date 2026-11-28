@@ -49,15 +49,9 @@ fun VolumeSlider(
     onValueChangeFinished: (() -> Unit)? = null,
     accentColor: Color = MaterialTheme.colorScheme.primary
 ) {
-    val glass = com.mochyy.mochymusic.ui.component.liquid.LocalLiquidGlass.current
-    if (glass.surface(glass.sliders)) {
-        com.mochyy.mochymusic.ui.component.liquid.LiquidGlassSlider(
-            value = value,
-            onValueChange = onValueChange,
-            modifier = modifier,
-            enabled = enabled,
-            onValueChangeFinished = onValueChangeFinished,
-        )
+    val skinned = LocalPlatformSkin.current.slider
+    if (skinned != null) {
+        skinned(value, onValueChange, modifier, 0f..1f, enabled, onValueChangeFinished)
         return
     }
     val interactionSource = remember { MutableInteractionSource() }

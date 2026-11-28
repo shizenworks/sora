@@ -197,20 +197,22 @@ fun StepSlider(
     val index = steps.indexOf(value).takeIf { it >= 0 } ?: steps.indices.minBy { kotlin.math.abs(steps[it] - value) }
     val last = (steps.size - 1).toFloat()
 
-    // the liquid glass sliders switch, when it is on, is the look of every slider in the app;
-    // the step snapping rides on top of the glass capsule as it does on the pill below
-    val glass = com.mochyy.mochymusic.ui.component.liquid.LocalLiquidGlass.current
-    if (glass.surface(glass.sliders)) {
-        com.mochyy.mochymusic.ui.component.liquid.LiquidGlassSlider(
-            value = index / last,
-            onValueChange = { fraction ->
+    // a platform slider look takes over, with the step snapping riding on top of it
+    val skinned = com.mochyy.mochymusic.ui.component.LocalPlatformSkin.current.slider
+    if (skinned != null) {
+        skinned(
+            index / last,
+            { fraction ->
                 val i = (fraction * last).roundToInt()
                 if (i != index) {
                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                     onValueChange(steps[i])
                 }
             },
-            modifier = modifier.sliderDragScrollLock(),
+            modifier.sliderDragScrollLock(),
+            0f..1f,
+            true,
+            null,
         )
         return
     }

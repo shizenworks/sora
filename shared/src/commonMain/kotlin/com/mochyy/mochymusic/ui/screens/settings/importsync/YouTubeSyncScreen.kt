@@ -62,7 +62,6 @@ import com.mochyy.mochymusic.shared.resources.yt_sync_undo_title
 import com.mochyy.mochymusic.shared.resources.yt_sync_upload_playlists_desc
 import com.mochyy.mochymusic.shared.resources.yt_sync_upload_playlists_detail
 import com.mochyy.mochymusic.shared.resources.yt_sync_upload_playlists_title
-import com.mochyy.mochymusic.ui.screens.settings.previews.YouTubeSyncPreview
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
@@ -132,8 +131,7 @@ fun YouTubeSyncScreen(
         title = stringResource(Res.string.import_sync_sync_title),
         onBack = { navController.navigateUp() },
     ) {
-        com.mochyy.mochymusic.ui.screens.gesture.PortedPreviewHeader { YouTubeSyncPreview() }
-        androidx.compose.foundation.layout.Spacer(androidx.compose.ui.Modifier.height(16.dp))
+        com.mochyy.mochymusic.ui.component.PagePreview(com.mochyy.mochymusic.ui.component.SettingsPreviewPage.YouTubeSync)
         SettingsGroup(
             title = stringResource(Res.string.yt_sync_account_header),
             style = SettingsGroupStyle.Grouped,

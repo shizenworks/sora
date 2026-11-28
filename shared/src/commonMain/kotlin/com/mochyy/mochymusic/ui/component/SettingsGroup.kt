@@ -15,7 +15,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import com.mochyy.mochymusic.ui.motion.columnFold
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.ui.layout.onPlaced
@@ -73,11 +72,12 @@ fun SettingsGroup(
 ) {
     // inside a settings page each group leans back as it slides under the top bar
     val fold = LocalSettingsScroll.current
+    val motion = LocalPlatformSkin.current.sectionMotion
     val clearTopPx = with(androidx.compose.ui.platform.LocalDensity.current) { fold?.clearTop?.toPx() ?: 0f }
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .then(if (fold != null) Modifier.columnFold(fold.state, clearTopPx) else Modifier)
+            .then(if (fold != null && motion != null) Modifier.motion(fold.state, clearTopPx) else Modifier)
     ) {
 
         title?.let {
